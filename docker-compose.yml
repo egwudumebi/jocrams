@@ -1,0 +1,115 @@
+# Jocrams — Local & staging Docker Compose stack
+# Usage: docker compose up -d
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: app
+    image: jocrams/app:latest
+    restart: unless-stopped
+    env_file: .env.docker
+    environment:
+      RUN_MIGRATIONS: "true"
+    volumes:
+      - storage:/var/www/html/storage/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - jocrams
+
+  nginx:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: nginx
+    image: jocrams/nginx:latest
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - storage:/var/www/html/storage/app:ro
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - jocrams
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-jocrams}
+      POSTGRES_USER: ${DB_USERNAME:-jocrams}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - jocrams
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-jocrams} -d ${DB_DATABASE:-jocrams}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    networks:
+      - jocrams
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  queue:
+    image: jocrams/app:latest
+    restart: unless-stopped
+    env_file: .env.docker
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600 --memory=256
+    depends_on:
+      app:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - jocrams
+
+  scheduler:
+    image: jocrams/app:latest
+    restart: unless-stopped
+    env_file: .env.docker
+    command: php artisan schedule:work
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - jocrams
+
+volumes:
+  postgres_data:
+  redis_data:
+  storage:
+
+networks:
+  jocrams:
+    driver: bridge

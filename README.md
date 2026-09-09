@@ -1,0 +1,189 @@
+# JOCRAMS
+
+**Journal of Communication Research and Media Studies** — an enterprise association management platform for [SICAMA](https://jocrams.com) (Scholars in Communication and Media Advancement Initiative).
+
+JOCRAMS unifies public content, member self-service, admin operations, and a full scholarly journal workflow in a single Laravel + Vue application.
+
+---
+
+## Features
+
+### Public website
+- Branded corporate site with SEO, news, events, member directory, and static pages
+- SICAMA parent-organization profile and editorial board
+- Guest event registration with Paystack payment verification
+- Public onboarding and membership credential verification
+- Published journal browse and article access controls
+
+### Member portal
+- Registration, email verification, and membership applications
+- Annual dues renewal with configurable renewal windows
+- Event registration (member and guest flows)
+- Digital membership credentials (card & certificate) with QR verification
+- Journal manuscript submission (DOCX), revision resubmission, and payment
+- Reviewer queue with accept/decline assignments and structured feedback
+- Profile, payments, downloads, and support messaging
+
+### Admin & journal manager
+- Role-based access control (members, events, content, payments, settings)
+- Membership approvals, renewals, and member management
+- Event calendar, pricing tiers, registrations, and attendance
+- News, pages, media library, and site-wide notification banner
+- **Journal workflow:** calls for papers, volumes/issues, categories, fees catalog, editorial board, reviewer assignment, production editor upload, submission pipeline
+- Payment ledger, reports, bulk campaigns, and audit logging
+
+### Payments
+- Paystack and Flutterwave integration
+- Membership dues, event fees, journal submission fees
+- Webhook reconciliation and admin payment visibility
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Backend | PHP 8.3, Laravel 13, Sanctum |
+| Frontend | Vue 3, Vue Router, Vite, Tailwind CSS 4 |
+| Database | SQLite (dev), PostgreSQL (Docker prod), MySQL/MariaDB (cPanel) |
+| Cache / queues | Database, Redis (Docker prod) |
+| PDF / exports | DomPDF, Maatwebsite Excel |
+| CI | GitHub Actions |
+
+---
+
+## Project structure
+
+```
+app/                    Laravel application (API, services, domain logic)
+resources/js/           Vue SPA (public, member, admin surfaces)
+routes/api.php          REST API (v1: public, member, admin, journal)
+database/               Migrations and seeders
+docker/                 Production Docker stack (Nginx, PHP-FPM, Postgres, Redis)
+docs/architecture/      System design and deployment guides
+scripts/deploy.sh       Zero-downtime Docker deployment script
+```
+
+Three authenticated surfaces share one API:
+
+| Surface | Path prefix | Audience |
+|---------|-------------|----------|
+| Public | `/` | Visitors, guests |
+| Member | `/member` | Registered members |
+| Admin | `/admin` | Staff and journal managers |
+
+Journal manager routes use `/api/v1/journal/admin/*` with journal-specific permissions (`journal.assign`, `journal.review`, `journal.publish`, `journal.submit`).
+
+---
+
+## Requirements
+
+- PHP **8.3+**
+- Composer 2.x
+- Node.js **20+** and npm (for frontend builds)
+- SQLite, PostgreSQL, or MySQL/MariaDB
+
+---
+
+## Local development
+
+```bash
+# Install dependencies
+composer install
+npm ci
+
+# Environment
+cp .env.example .env
+php artisan key:generate
+
+# Database
+touch database/database.sqlite   # if using SQLite
+php artisan migrate
+php artisan db:seed
+
+# Storage symlink
+php artisan storage:link
+
+# Run (two terminals)
+php artisan serve
+npm run dev
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+**Seeded admin login** (after `RolePermissionSeeder`): check `database/seeders/RolePermissionSeeder.php` for default credentials in your environment.
+
+### Docker (recommended for production-like setup)
+
+```bash
+make setup-docker
+# Set APP_KEY in .env.docker, then:
+make docker-up
+make seed
+```
+
+See [docs/architecture/phase-5-deployment.md](docs/architecture/phase-5-deployment.md) for the full Docker stack.
+
+---
+
+## Testing
+
+```bash
+php artisan test
+# or
+make test
+```
+
+GitHub Actions runs Pint, PHPUnit, frontend build, and Docker image build on push.
+
+---
+
+## Production deployment
+
+### Docker (VPS)
+
+```bash
+./scripts/deploy.sh production
+```
+
+Uses `docker-compose.yml` + `docker-compose.prod.yml` with Nginx, PHP-FPM, PostgreSQL, Redis, queue workers, and scheduler.
+
+### Shared hosting (cPanel)
+
+1. Set **PHP 8.3** in MultiPHP Manager for your domain.
+2. Use CloudLinux alt-php for CLI: `/opt/alt/php83/usr/bin/php`
+3. Point the domain document root to `public/`
+4. Configure `.env` with MySQL/MariaDB (`DB_CONNECTION=mysql`)
+5. Run `composer install --no-dev`, `php artisan migrate --force`, `php artisan storage:link`
+6. Build frontend locally (`npm run build`) and upload `public/build/`
+7. Add a cron job: `* * * * * php artisan schedule:run`
+
+---
+
+## Configuration
+
+Key environment variables (see `.env.example`):
+
+| Variable | Purpose |
+|----------|---------|
+| `APP_URL` | Canonical site URL (SEO, emails, payment callbacks) |
+| `DB_*` | Database connection |
+| `PAYSTACK_*` / `FLUTTERWAVE_*` | Payment gateways |
+| `MAIL_*` | Transactional email |
+| `QUEUE_CONNECTION` | `database` (shared hosting) or `redis` (Docker) |
+
+Site branding (name, logo, SICAMA profile, notification banner) is managed via **Admin → System Settings** and seeded by `SicamaSeeder`.
+
+---
+
+## Documentation
+
+- [System architecture](docs/architecture/phase-1-system-architecture.md)
+- [Deployment & DevOps](docs/architecture/phase-5-deployment.md)
+- [Implementation parity plan](docs/PARITY_IMPLEMENTATION_PLAN.md)
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE) if present. Application content and branding belong to SICAMA / JOCRAMS.

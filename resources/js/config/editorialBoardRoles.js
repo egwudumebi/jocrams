@@ -1,0 +1,21 @@
+/** Keep in sync with App\Enums\EditorialBoardRole */
+export const editorialBoardRoles = [
+    'Editor-in-Chief',
+    'Deputy Editor',
+    'Managing Editor',
+    'Executive Editor',
+    'Associate Editor',
+    'Section Editor',
+    'Guest Editor',
+    'Senior Editor',
+    'Editorial Board Member',
+    'Advisory Board Member',
+    'Editor Emeritus',
+    'Copy Editor',
+    'Language Editor',
+    'Statistical Advisor',
+    'Ethics Advisor',
+    'Peer Review Editor',
+    'Publications Manager',
+    'Production Editor',
+];

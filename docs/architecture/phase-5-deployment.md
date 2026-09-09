@@ -193,6 +193,27 @@ ssl_certificate_key /etc/nginx/ssl/privkey.pem;
 
 ## 9. cPanel / Apache Setup (Alternative)
 
+### Staging with bundled SQLite
+
+The repository tracks `database/database.sqlite` (demo seed data) for cPanel smoke-testing before MySQL cutover.
+
+```bash
+git clone git@github.com:egwudumebi/jocrams.git ~/jocrams
+cd ~/jocrams
+cp .env.cpanel.example .env
+php artisan key:generate
+chmod 775 database && chmod 664 database/database.sqlite
+composer install --no-dev --optimize-autoloader
+php artisan storage:link
+php artisan config:cache
+```
+
+Upload `public/build/` from a local `npm run build`. Use `DB_CONNECTION=sqlite` (default in `.env.cpanel.example`). Skip `migrate` unless applying newer migrations on top of the bundled file.
+
+Switch to MySQL for production: create DB in cPanel, set `DB_CONNECTION=mysql` and credentials, then `php artisan migrate --force`.
+
+### Apache virtual host
+
 For shared hosting without Docker:
 
 ```apache

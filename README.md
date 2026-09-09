@@ -45,7 +45,7 @@ JOCRAMS unifies public content, member self-service, admin operations, and a ful
 |-------|------------|
 | Backend | PHP 8.3, Laravel 13, Sanctum |
 | Frontend | Vue 3, Vue Router, Vite, Tailwind CSS 4 |
-| Database | SQLite (dev), PostgreSQL (Docker prod), MySQL/MariaDB (cPanel) |
+| Database | SQLite (dev & cPanel staging), PostgreSQL (Docker prod), MySQL/MariaDB (cPanel prod) |
 | Cache / queues | Database, Redis (Docker prod) |
 | PDF / exports | DomPDF, Maatwebsite Excel |
 | CI | GitHub Actions |
@@ -150,13 +150,39 @@ Uses `docker-compose.yml` + `docker-compose.prod.yml` with Nginx, PHP-FPM, Postg
 
 ### Shared hosting (cPanel)
 
+#### Phase 1 — SQLite staging (current)
+
+The repo includes a seeded **`database/database.sqlite`** so you can smoke-test on cPanel before creating a MySQL database.
+
 1. Set **PHP 8.3** in MultiPHP Manager for your domain.
 2. Use CloudLinux alt-php for CLI: `/opt/alt/php83/usr/bin/php`
-3. Point the domain document root to `public/`
-4. Configure `.env` with MySQL/MariaDB (`DB_CONNECTION=mysql`)
-5. Run `composer install --no-dev`, `php artisan migrate --force`, `php artisan storage:link`
-6. Build frontend locally (`npm run build`) and upload `public/build/`
-7. Add a cron job: `* * * * * php artisan schedule:run`
+3. Clone the repo to e.g. `~/jocrams` and point the document root to `public/`
+4. Copy env and generate a key:
+   ```bash
+   cp .env.cpanel.example .env
+   php artisan key:generate
+   ```
+5. Ensure SQLite is writable:
+   ```bash
+   chmod 775 database
+   chmod 664 database/database.sqlite
+   ```
+6. Run `composer install --no-dev`, `php artisan storage:link`, `php artisan config:cache`
+7. Build frontend locally (`npm run build`) and upload/rsync `public/build/`
+8. Add cron: `* * * * * cd ~/jocrams && php artisan schedule:run >> /dev/null 2>&1`
+
+**Seeded staging login:** `admin@jocrams.test` / `password` (change before go-live).
+
+> Do **not** run `migrate` on the bundled SQLite unless you intentionally want to apply new migrations — the file is already migrated and seeded.
+
+#### Phase 2 — MySQL production
+
+When ready to go live:
+
+1. Create a MySQL database and user in cPanel
+2. Update `.env`: `DB_CONNECTION=mysql`, `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`
+3. Run `php artisan migrate --force` and optionally `php artisan db:seed`
+4. Import or recreate content as needed; retire the SQLite file
 
 ---
 

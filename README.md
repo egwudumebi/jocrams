@@ -175,6 +175,15 @@ The repo includes a seeded **`database/database.sqlite`** so you can smoke-test 
 
 > Do **not** run `migrate` on the bundled SQLite unless you intentionally want to apply new migrations — the file is already migrated and seeded.
 
+**Quick server setup** (SSH into cPanel, after `git clone`):
+
+```bash
+cd ~/jocrams
+bash scripts/deploy-cpanel.sh
+```
+
+**Fix generic “404 Not Found” (cPanel default page):** the domain document root must be `~/jocrams/public`, not `public_html` or the project root. In cPanel go to **Domains → jocrams.com → Document Root** and set it to `/home/calseries/jocrams/public`. Then open `https://jocrams.com/up` — you should see `{"status":"ok"}`.
+
 #### Phase 2 — MySQL production
 
 When ready to go live:

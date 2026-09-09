@@ -1,4 +1,5 @@
 @php
+    use App\Support\Seo\StructuredData;
     use App\Support\Settings\SiteBranding;
 
     try {
@@ -28,6 +29,8 @@
 
     $siteDescription = trim($siteTagline.' Published by '.$parentOrgName.'. Explore membership, events, research publications, and manuscript submissions.');
     $canonicalUrl = url()->current();
+    $logoDimensions = StructuredData::logoDimensions($siteLogo);
+    $structuredData = StructuredData::graph($seoBranding, url('/'), $siteDescription);
 @endphp
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
@@ -45,6 +48,8 @@
     <meta name="theme-color" content="#0f2744">
 
     <link rel="canonical" href="{{ $canonicalUrl }}">
+    <link rel="icon" type="{{ $logoDimensions['mime'] }}" href="{{ $siteLogo }}" sizes="{{ $logoDimensions['width'] }}x{{ $logoDimensions['height'] }}">
+    <link rel="apple-touch-icon" href="{{ $siteLogo }}">
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="{{ $siteName }}">
@@ -53,6 +58,10 @@
     <meta property="og:url" content="{{ $canonicalUrl }}">
     <meta property="og:locale" content="en_NG">
     <meta property="og:image" content="{{ $siteLogo }}">
+    <meta property="og:image:secure_url" content="{{ $siteLogo }}">
+    <meta property="og:image:type" content="{{ $logoDimensions['mime'] }}">
+    <meta property="og:image:width" content="{{ $logoDimensions['width'] }}">
+    <meta property="og:image:height" content="{{ $logoDimensions['height'] }}">
     <meta property="og:image:alt" content="{{ $siteName }} logo">
 
     <meta name="twitter:card" content="summary_large_image">
@@ -60,6 +69,8 @@
     <meta name="twitter:description" content="{{ $siteDescription }}">
     <meta name="twitter:image" content="{{ $siteLogo }}">
     <meta name="twitter:image:alt" content="{{ $siteName }} logo">
+
+    <script type="application/ld+json">@json($structuredData, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)</script>
 
     <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
     @vite(['resources/css/app.css', 'resources/js/app.js'])

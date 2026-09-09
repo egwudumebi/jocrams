@@ -141,17 +141,31 @@ export function applySeo(options) {
     setJsonLd(options.jsonLd ?? null);
 }
 
+function buildLogoImageObject(logoUrl, siteName) {
+    return {
+        '@type': 'ImageObject',
+        '@id': `${logoUrl}#logo`,
+        url: logoUrl,
+        contentUrl: logoUrl,
+        width: 1024,
+        height: 1024,
+        caption: `${siteName} logo`,
+    };
+}
+
 export function buildOrganizationJsonLd(branding, origin) {
     const siteName = branding.site_name || 'JOCRAMS';
     const description = branding.site_tagline || branding.journal_full_name || '';
-    const logo = absoluteUrl(branding.site_logo_url || '/images/sicama-logo.png', origin);
+    const logoUrl = absoluteUrl(branding.site_logo_url || '/images/sicama-logo.png', origin);
 
     return {
         '@context': 'https://schema.org',
         '@type': 'Organization',
+        '@id': `${origin}/#organization`,
         name: siteName,
         url: origin,
-        logo,
+        logo: buildLogoImageObject(logoUrl, siteName),
+        image: logoUrl,
         description,
         parentOrganization: branding.parent_org?.full_name
             ? {
@@ -177,6 +191,7 @@ export function buildArticleJsonLd({ title, description, url, image, datePublish
             ? {
                 '@type': 'Organization',
                 name: publisherName,
+                logo: image ? buildLogoImageObject(image, publisherName) : undefined,
             }
             : undefined,
     };

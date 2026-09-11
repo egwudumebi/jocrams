@@ -51,6 +51,7 @@ use App\Http\Controllers\Api\V1\Public\MediaCatalogController;
 use App\Http\Controllers\Api\V1\Public\MemberController as PublicMemberController;
 use App\Http\Controllers\Api\V1\Public\MembershipTierController;
 use App\Http\Controllers\Api\V1\Public\NewsController;
+use App\Http\Controllers\Api\V1\Public\OpenJournalCallsController;
 use App\Http\Controllers\Api\V1\Public\OnboardingController;
 use App\Http\Controllers\Api\V1\Public\PageController as PublicPageController;
 use App\Http\Controllers\Api\V1\Public\PaymentVerifyController;
@@ -118,6 +119,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('contact', [ContactController::class, 'store'])->middleware('throttle:contact');
         Route::get('membership-tiers', [MembershipTierController::class, 'index']);
         Route::get('fee-catalog', PublicFeeCatalogController::class);
+        Route::get('journal/calls/open', OpenJournalCallsController::class);
         Route::get('members', [PublicMemberController::class, 'index']);
         Route::get('members/{member:uuid}', [PublicMemberController::class, 'show']);
         Route::post('members/verify-number', VerifyMembershipNumberController::class)

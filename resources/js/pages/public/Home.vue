@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
     ArrowDownTrayIcon,
@@ -18,13 +18,15 @@ import {
 } from '@heroicons/vue/24/outline';
 import { ShieldCheckIcon as ShieldCheckSolidIcon } from '@heroicons/vue/24/solid';
 import AnimatedMetricStat from '../../components/landing/AnimatedMetricStat.vue';
-import HeroTrustItem from '../../components/landing/HeroTrustItem.vue';
+import HeroCarousel from '../../components/landing/HeroCarousel.vue';
 import ScrollReveal from '../../components/landing/ScrollReveal.vue';
 import SectionHeading from '../../components/landing/SectionHeading.vue';
 import { publicApi } from '../../api/client';
+import { useSiteBranding } from '../../composables/useSiteBranding';
+import { resolveHeroSlides } from '../../composables/useHeroSlides';
 
-const heroImage = '/images/hero-background.png';
-const parallaxOffset = ref(0);
+const { branding, loadBranding } = useSiteBranding();
+const heroSlides = ref(resolveHeroSlides({}));
 
 const news = ref([]);
 const events = ref([]);
@@ -57,84 +59,109 @@ function formatPublishedDate(dateString) {
     });
 }
 
-function handleScroll() {
-    parallaxOffset.value = window.scrollY * 0.2;
-}
-
 onMounted(async () => {
-    window.addEventListener('scroll', handleScroll, { passive: true });
-
     const api = publicApi();
 
     try {
-        const [newsRes, eventsRes, downloadsRes] = await Promise.all([
+        await loadBranding();
+        heroSlides.value = resolveHeroSlides({ branding: branding.value });
+
+        const [newsRes, eventsRes, downloadsRes, callsRes] = await Promise.all([
             api.get('/news', { params: { per_page: 3 } }),
             api.get('/events'),
             api.get('/downloads'),
+            api.get('/journal/calls/open').catch(() => ({ data: { data: [] } })),
         ]);
 
         news.value = newsRes.data.data.slice(0, 3);
         events.value = eventsRes.data.data.slice(0, 3);
         downloads.value = downloadsRes.data.data.slice(0, 4);
+
+        heroSlides.value = resolveHeroSlides({
+            calls: callsRes.data.data || [],
+            branding: branding.value,
+        });
     } finally {
         loadingNews.value = false;
         loadingEvents.value = false;
         loadingDownloads.value = false;
-    }
-});
 
-onUnmounted(() => {
-    window.removeEventListener('scroll', handleScroll);
+        if (!heroSlides.value.length) {
+            heroSlides.value = resolveHeroSlides({ branding: branding.value });
+        }
+    }
 });
 </script>
 
 <template>
     <div>
         <!-- Hero -->
-        <section class="relative overflow-hidden pb-24 sm:pb-28">
-            <div
-                class="hero-bg-animate absolute inset-0 bg-cover bg-center bg-no-repeat will-change-transform"
-                :style="{
-                    backgroundImage: `url(${heroImage})`,
-                    transform: `translateY(${parallaxOffset}px) scale(1.05)`,
-                }"
-                aria-hidden="true"
-            />
-            <div class="absolute inset-0 bg-gradient-to-r from-white/90 via-white/60 to-white/20" aria-hidden="true" />
-            <div class="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" aria-hidden="true" />
+        <section class="relative min-h-[34rem] overflow-hidden pb-28 sm:min-h-[38rem] sm:pb-32">
+            <HeroCarousel v-if="heroSlides.length" :slides="heroSlides" v-slot="{ slide, theme }">
+                <div class="relative z-10 mx-auto max-w-7xl px-4 pt-16 sm:px-6 sm:pt-20 lg:px-8 lg:pt-24">
+                    <div class="max-w-2xl lg:max-w-3xl">
+                        <p
+                            class="label-caps mb-4"
+                            :class="theme === 'dark' ? 'text-accent-gold' : 'text-institutional'"
+                        >
+                            {{ slide.eyebrow }}
+                        </p>
+                        <h1
+                            class="font-display font-extrabold leading-[1.02] tracking-[-0.03em] sm:text-5xl lg:text-[3.25rem]"
+                            :class="[
+                                theme === 'dark' ? 'text-white' : 'text-institutional-dark',
+                                slide.compactTitle ? 'text-3xl sm:text-4xl lg:text-[2.75rem]' : 'text-4xl',
+                            ]"
+                        >
+                            {{ slide.title }}
+                            <span v-if="slide.highlight" class="accent-serif text-accent-gold">{{ slide.highlight }}</span><template v-if="slide.suffix">{{ slide.suffix }}</template>
+                        </h1>
+                        <p
+                            class="mt-6 max-w-2xl text-lg leading-relaxed"
+                            :class="theme === 'dark' ? 'text-slate-200' : 'text-text-secondary'"
+                        >
+                            {{ slide.description }}
+                        </p>
 
-            <div class="relative mx-auto max-w-7xl px-4 pt-16 sm:px-6 sm:pt-20 lg:px-8 lg:pt-24">
-                <div class="max-w-3xl">
-                    <p class="hero-animate label-caps mb-4 text-institutional">Enterprise Association Platform</p>
-                    <h1 class="hero-animate font-display text-4xl font-extrabold leading-[0.98] tracking-[-0.03em] text-institutional-dark sm:text-5xl lg:text-[3.5rem]">
-                        Building Stronger <span class="accent-serif">Connections</span>. Advancing Our Profession.
-                    </h1>
-                    <p class="hero-animate hero-animate-delay-1 mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
-                        The leading association committed to excellence, advocacy, and professional growth for industry leaders worldwide.
-                    </p>
+                        <div class="mt-10 flex flex-wrap gap-4">
+                            <RouterLink :to="slide.ctaTo" class="btn-gold hover:-translate-y-0.5">
+                                {{ slide.ctaLabel }}
+                            </RouterLink>
+                            <RouterLink
+                                v-if="slide.secondaryCtaTo"
+                                :to="slide.secondaryCtaTo"
+                                class="hover:-translate-y-0.5"
+                                :class="theme === 'dark' ? 'btn-white-outline' : 'btn-institutional'"
+                            >
+                                {{ slide.secondaryCtaLabel }}
+                            </RouterLink>
+                        </div>
+                    </div>
 
-                    <div class="hero-animate hero-animate-delay-2 mt-10 flex flex-wrap gap-4">
-                        <RouterLink to="/member/register" class="btn-gold hover:-translate-y-0.5">
-                            Become a Member
-                        </RouterLink>
-                        <RouterLink to="/downloads" class="btn-institutional hover:-translate-y-0.5">
-                            Explore Publications
-                        </RouterLink>
+                    <div class="mt-12 flex flex-wrap gap-3">
+                        <div
+                            v-for="item in [
+                                { label: 'Trusted Since 1987', icon: ShieldCheckIcon },
+                                { label: '10,000+ Active Members', icon: UsersIcon },
+                                { label: '50+ Industry Partners', icon: LinkIcon },
+                            ]"
+                            :key="item.label"
+                            class="inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-sm font-medium shadow-sm backdrop-blur-sm"
+                            :class="theme === 'dark'
+                                ? 'border border-white/15 bg-white/10 text-white'
+                                : 'border border-institutional/10 bg-white/80 text-institutional-dark'"
+                        >
+                            <span
+                                class="flex size-7 shrink-0 items-center justify-center rounded-full"
+                                :class="theme === 'dark' ? 'bg-white/15 text-accent-gold' : 'bg-institutional/8 text-institutional'"
+                            >
+                                <component :is="item.icon" class="size-4" aria-hidden="true" />
+                            </span>
+                            {{ item.label }}
+                        </div>
                     </div>
                 </div>
-
-                <div class="hero-animate hero-animate-delay-3 mt-12 flex flex-wrap gap-4">
-                    <HeroTrustItem label="Trusted Since 1987">
-                        <ShieldCheckIcon class="size-4 text-institutional" aria-hidden="true" />
-                    </HeroTrustItem>
-                    <HeroTrustItem label="10,000+ Active Members">
-                        <UsersIcon class="size-4 text-institutional" aria-hidden="true" />
-                    </HeroTrustItem>
-                    <HeroTrustItem label="50+ Industry Partners">
-                        <LinkIcon class="size-4 text-institutional" aria-hidden="true" />
-                    </HeroTrustItem>
-                </div>
-            </div>
+            </HeroCarousel>
         </section>
 
         <!-- Metrics (floating bar) -->

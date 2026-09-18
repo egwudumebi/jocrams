@@ -41,7 +41,7 @@ onMounted(async () => {
         <div class="card-modern w-full p-8 text-center">
             <div v-if="loading" class="space-y-4">
                 <div class="mx-auto size-10 animate-spin rounded-full border-2 border-institutional/20 border-t-institutional" />
-                <p class="text-sm text-slate-600">Confirming your payment with Paystack…</p>
+                <p class="text-sm text-slate-600">Confirming your payment…</p>
             </div>
 
             <div v-else-if="message" class="space-y-4">

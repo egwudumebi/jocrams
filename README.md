@@ -169,7 +169,11 @@ The repo includes a seeded **`database/database.sqlite`** so you can smoke-test 
    ```
 6. Run `composer install --no-dev`, `php artisan storage:link`, `php artisan config:cache`
 7. Build frontend locally (`npm run build`) and upload/rsync `public/build/`
-8. Add cron: `* * * * * cd ~/jocrams && php artisan schedule:run >> /dev/null 2>&1`
+8. Sync uploaded media (profile photos, branding, documents — not in git):
+   ```bash
+   rsync -avz storage/app/public/ calseries@jocrams.com:~/jocrams/storage/app/public/
+   ```
+9. Add cron: `* * * * * cd ~/jocrams && php artisan schedule:run >> /dev/null 2>&1`
 
 **Seeded staging login:** `admin@jocrams.test` / `password` (change before go-live).
 

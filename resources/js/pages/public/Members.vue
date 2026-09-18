@@ -13,6 +13,15 @@ const members = ref([]);
 const search = ref('');
 const loading = ref(true);
 const totalMembers = ref(0);
+const failedImages = ref(new Set());
+
+function onProfileImageError(memberUuid) {
+    failedImages.value = new Set([...failedImages.value, memberUuid]);
+}
+
+function showProfileImage(member) {
+    return Boolean(member.profile_image) && !failedImages.value.has(member.uuid);
+}
 
 const filteredMembers = computed(() => {
     const query = search.value.trim().toLowerCase();
@@ -85,6 +94,7 @@ onMounted(async () => {
                         </h1>
                         <p class="mt-4 text-lg leading-relaxed text-text-secondary">
                             Discover active members of our association — their roles, tiers, and public profiles.
+                            New registrations appear here after membership payment is verified and an administrator activates the account.
                         </p>
                     </div>
 
@@ -147,10 +157,11 @@ onMounted(async () => {
                         <div class="bg-gradient-to-br from-institutional/90 to-brand-700 px-6 py-5 text-white">
                             <div class="flex items-center gap-4">
                                 <img
-                                    v-if="member.profile_image"
+                                    v-if="showProfileImage(member)"
                                     :src="member.profile_image"
                                     :alt="member.name"
                                     class="size-14 rounded-full border-2 border-white/30 object-cover"
+                                    @error="onProfileImageError(member.uuid)"
                                 />
                                 <div
                                     v-else

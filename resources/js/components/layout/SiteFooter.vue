@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted } from 'vue';
+import { computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useSiteBranding } from '../../composables/useSiteBranding';
+import { useOrgInfo } from '../../composables/useOrgInfo';
 
 const { branding, loadBranding } = useSiteBranding();
+const { social, contact, bank, hasSocialLinks, loadOrgInfo } = useOrgInfo();
 
 const quickLinks = [
     { to: '/', label: 'About' },
@@ -12,6 +14,7 @@ const quickLinks = [
     { to: '/events', label: 'Events' },
     { to: '/downloads', label: 'Library' },
     { to: '/journal', label: 'Journal' },
+    { to: '/journal/author-guidelines', label: 'Author Guidelines' },
     { to: '/contact', label: 'Contact' },
 ];
 
@@ -21,8 +24,21 @@ const memberLinks = [
     { to: '/verify', label: 'Verify Credential' },
 ];
 
+const socialItems = computed(() => {
+    const links = social.value || {};
+
+    return [
+        { key: 'facebook', label: 'Facebook', href: links.facebook },
+        { key: 'linkedin', label: 'LinkedIn', href: links.linkedin },
+        { key: 'x', label: 'X', href: links.x },
+        { key: 'instagram', label: 'Instagram', href: links.instagram },
+        { key: 'youtube', label: 'YouTube', href: links.youtube },
+    ].filter((item) => typeof item.href === 'string' && item.href.trim() !== '');
+});
+
 onMounted(() => {
     loadBranding();
+    loadOrgInfo();
 });
 </script>
 
@@ -51,8 +67,20 @@ onMounted(() => {
                     <p class="mt-3 max-w-xs text-sm leading-relaxed">
                         {{ branding?.journal_full_name || branding?.site_tagline }}
                     </p>
-                    <p class="mt-2 text-xs text-slate-500">
-                        A publication of {{ branding?.parent_org?.full_name }}
+                    <div v-if="hasSocialLinks" class="mt-5 flex flex-wrap gap-2">
+                        <a
+                            v-for="item in socialItems"
+                            :key="item.key"
+                            :href="item.href"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="rounded-full border border-white/15 px-3 py-1.5 text-xs font-semibold text-white/80 transition hover:border-accent-gold hover:text-accent-gold"
+                        >
+                            {{ item.label }}
+                        </a>
+                    </div>
+                    <p v-else class="mt-4 text-xs text-slate-500">
+                        Social profiles can be added in Admin → Settings.
                     </p>
                 </div>
 
@@ -79,11 +107,19 @@ onMounted(() => {
                 </div>
 
                 <div>
-                    <h3 class="label-caps !text-slate-300">Contact</h3>
+                    <h3 class="label-caps !text-slate-300">Contact & Payments</h3>
                     <ul class="mt-4 space-y-2.5 text-sm">
                         <li>Nigeria</li>
                         <li>
-                            <a href="mailto:info@jocrams.test" class="transition hover:text-white">info@jocrams.test</a>
+                            <a
+                                :href="`mailto:${contact?.email || 'jocrams2026@gmail.com'}`"
+                                class="transition hover:text-white"
+                            >
+                                {{ contact?.email || 'jocrams2026@gmail.com' }}
+                            </a>
+                        </li>
+                        <li v-if="bank?.account_number" class="text-slate-500">
+                            UBA · {{ bank.account_number }}
                         </li>
                         <li>
                             <RouterLink to="/contact" class="transition hover:text-white">Send a message →</RouterLink>
@@ -103,7 +139,7 @@ onMounted(() => {
                 </p>
                 <div class="flex flex-wrap gap-x-6 gap-y-2 text-sm">
                     <RouterLink to="/sicama" class="transition hover:text-white">Governance</RouterLink>
-                    <RouterLink to="/contact" class="transition hover:text-white">Privacy & Terms</RouterLink>
+                    <RouterLink to="/journal/author-guidelines" class="transition hover:text-white">Author Guidelines</RouterLink>
                     <RouterLink to="/contact" class="transition hover:text-white">Help & Support</RouterLink>
                 </div>
             </div>

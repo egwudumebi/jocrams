@@ -76,10 +76,34 @@ class EventRegistrationController extends Controller
     {
         abort_if($event->status !== 'published', 404);
 
+        $gateway = PaymentGateway::from($request->input('gateway'));
+
+        if ($gateway === PaymentGateway::Manual) {
+            $result = $this->registrationService->beginMemberBankTransfer(
+                user: $request->user(),
+                event: $event,
+                memberType: $request->input('member_type'),
+                name: $request->input('name'),
+                email: $request->input('email'),
+                phone: $request->input('phone'),
+            );
+
+            return response()->json([
+                'message' => 'Registration reserved. Transfer the fee and submit your receipt for verification.',
+                'data' => [
+                    'bank_transfer' => true,
+                    'fee' => $result['fee'],
+                    'currency' => $result['currency'],
+                    'related_uuid' => $result['registration']->uuid,
+                    'registration' => $result['registration'],
+                ],
+            ], 201);
+        }
+
         $payment = $this->registrationService->initiateMemberPayment(
             user: $request->user(),
             event: $event,
-            gateway: PaymentGateway::from($request->input('gateway')),
+            gateway: $gateway,
             idempotencyKey: $request->input('idempotency_key'),
             memberType: $request->input('member_type'),
             name: $request->input('name'),

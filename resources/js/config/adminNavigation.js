@@ -20,6 +20,7 @@ export const adminRouteTitles = {
     'admin.journal.show': 'Journal Submission',
     'admin.assets': 'Media Library',
     'admin.payments': 'Payments',
+    'admin.payment-proofs': 'Payment Receipts',
     'admin.reports': 'Reports & Analytics',
     'admin.settings': 'System Settings',
     'admin.help': 'Help & Support',
@@ -64,12 +65,15 @@ export const adminNavSections = [
 ];
 
 export const adminStandaloneLinks = [
+    { to: '/admin/payment-proofs', name: 'admin.payment-proofs', label: 'Payment Receipts' },
+    { to: '/admin/payments', name: 'admin.payments', label: 'Payments' },
     { to: '/admin/reports', name: 'admin.reports', label: 'Reports & Analytics' },
     { to: '/admin/settings', name: 'admin.settings', label: 'System Settings' },
 ];
 
 export const adminQuickLinks = [
     { to: '/admin/approvals', label: 'Pending Applications' },
+    { to: '/admin/payment-proofs', label: 'Payment Receipts' },
     { to: '/admin/members', label: 'Member Directory' },
     { to: '/admin/renewals', label: 'Renewal Center' },
     { to: '/admin/events', label: 'Event Calendar' },

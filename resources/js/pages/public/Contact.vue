@@ -9,7 +9,9 @@ import {
     PaperAirplaneIcon,
     PhoneIcon,
 } from '@heroicons/vue/24/outline';
+import BankTransferCard from '../../components/payments/BankTransferCard.vue';
 import { publicApi } from '../../api/client';
+import { useOrgInfo } from '../../composables/useOrgInfo';
 import { extractApiError } from '../../utils/apiError';
 
 const form = ref({ name: '', email: '', phone: '', subject: '', message: '' });
@@ -17,6 +19,7 @@ const sent = ref(false);
 const error = ref('');
 const submitting = ref(false);
 const branches = ref([]);
+const { bank, fees, contact, loadOrgInfo } = useOrgInfo();
 
 async function submit() {
     error.value = '';
@@ -34,6 +37,8 @@ async function submit() {
 }
 
 onMounted(async () => {
+    await loadOrgInfo();
+
     try {
         const { data } = await publicApi().get('/branches');
         branches.value = data.data.slice(0, 2);
@@ -160,22 +165,39 @@ onMounted(async () => {
                     <aside class="lg:col-span-2">
                         <div class="sticky top-24 space-y-6">
                             <div class="card-modern p-6 sm:p-7">
-                                <h2 class="font-display text-lg font-bold text-institutional-dark">Headquarters</h2>
+                                <h2 class="font-display text-lg font-bold text-institutional-dark">Editorial office</h2>
                                 <ul class="mt-5 space-y-4">
                                     <li class="flex gap-3 text-sm text-text-secondary">
                                         <MapPinIcon class="mt-0.5 size-5 shrink-0 text-institutional" aria-hidden="true" />
-                                        <span>Lagos, Nigeria<br>Association headquarters</span>
+                                        <span>Nigeria<br>SICAMA / JOCRAMS</span>
                                     </li>
                                     <li class="flex gap-3 text-sm text-text-secondary">
                                         <EnvelopeIcon class="mt-0.5 size-5 shrink-0 text-institutional" aria-hidden="true" />
-                                        <a href="mailto:info@jocrams.test" class="transition hover:text-institutional">info@jocrams.test</a>
+                                        <a
+                                            :href="`mailto:${contact?.email || 'jocrams2026@gmail.com'}`"
+                                            class="transition hover:text-institutional"
+                                        >
+                                            {{ contact?.email || 'jocrams2026@gmail.com' }}
+                                        </a>
                                     </li>
-                                    <li class="flex gap-3 text-sm text-text-secondary">
+                                    <li
+                                        v-for="phone in (contact?.phones || []).slice(0, 2)"
+                                        :key="phone"
+                                        class="flex gap-3 text-sm text-text-secondary"
+                                    >
                                         <PhoneIcon class="mt-0.5 size-5 shrink-0 text-institutional" aria-hidden="true" />
-                                        <span>+234 800 JOCRAMS</span>
+                                        <a :href="`tel:${phone.replace(/\s+/g, '')}`" class="transition hover:text-institutional">{{ phone }}</a>
                                     </li>
                                 </ul>
                             </div>
+
+                            <BankTransferCard
+                                :bank="bank"
+                                :fees="fees"
+                                show-fees
+                                title="Pay to UBA account"
+                                description="Membership and journal fees are paid by bank transfer for now. Admin will approve after you send evidence."
+                            />
 
                             <div v-if="branches.length > 0" class="card-modern p-6 sm:p-7">
                                 <h2 class="font-display text-lg font-bold text-institutional-dark">Branch offices</h2>
@@ -203,7 +225,7 @@ onMounted(async () => {
                             <div class="rounded-2xl bg-gradient-to-br from-institutional to-institutional-dark p-6 text-white sm:p-7">
                                 <h2 class="font-display text-lg font-bold">Become a member</h2>
                                 <p class="mt-2 text-sm leading-relaxed text-slate-200">
-                                    Join thousands of professionals and unlock full access to events, resources, and credentials.
+                                    Register, pay the membership fee by transfer, and unlock the member portal after admin approval.
                                 </p>
                                 <RouterLink to="/member/register" class="btn-gold mt-5 inline-flex text-sm">
                                     Join Us Today

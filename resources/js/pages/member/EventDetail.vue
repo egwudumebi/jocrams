@@ -141,17 +141,23 @@ async function register() {
 async function startPayment() {
     const payload = {
         ...form.value,
-        gateway: 'paystack',
+        gateway: 'manual',
         idempotency_key: `event-${event.value.uuid}-${Date.now()}`,
     };
 
     const { data } = await getMemberClient().post(`/events/${event.value.uuid}/payments/initialize`, payload);
 
-    if (data.data?.authorization_url) {
-        window.location.href = data.data.authorization_url;
-    } else {
-        error.value = 'Unable to start payment.';
+    if (data.data?.bank_transfer && data.data?.related_uuid) {
+        const params = new URLSearchParams({
+            purpose: 'event_fee',
+            related: data.data.related_uuid,
+            amount: String(data.data.fee || fee.value),
+        });
+        window.location.href = `/member/payments?${params.toString()}`;
+        return;
     }
+
+    error.value = 'Unable to start bank transfer registration.';
 }
 
 async function submitRegistration() {
@@ -290,7 +296,7 @@ async function submitRegistration() {
                         <p class="text-sm font-semibold uppercase tracking-wide">Registration pending</p>
                     </div>
                     <p class="mt-3 text-sm text-slate-600">
-                        Your registration is awaiting payment confirmation. If you completed payment, it may take a moment to update.
+                        Your registration is awaiting bank-transfer verification. Transfer the fee, then upload your receipt on the Payments page.
                     </p>
                     <dl v-if="myRegistration.registration_number" class="mt-4 space-y-2 text-sm">
                         <div>
@@ -298,7 +304,13 @@ async function submitRegistration() {
                             <dd class="font-mono font-semibold text-slate-900">{{ myRegistration.registration_number }}</dd>
                         </div>
                     </dl>
-                    <RouterLink to="/member/events" class="btn-secondary mt-4 inline-flex w-full justify-center !rounded-xl">
+                    <RouterLink
+                        :to="`/member/payments?purpose=event_fee&related=${myRegistration.uuid}&amount=${fee}`"
+                        class="btn-institutional mt-4 inline-flex w-full justify-center !rounded-xl"
+                    >
+                        Submit payment receipt
+                    </RouterLink>
+                    <RouterLink to="/member/events" class="btn-secondary mt-2 inline-flex w-full justify-center !rounded-xl">
                         Back to my events
                     </RouterLink>
                 </div>
@@ -332,7 +344,7 @@ async function submitRegistration() {
                         </select>
                     </div>
                     <button type="submit" class="btn-institutional w-full" :disabled="submitting">
-                        {{ submitting ? 'Processing…' : (isPaid ? 'Pay & Register' : 'Register') }}
+                        {{ submitting ? 'Processing…' : (isPaid ? 'Continue to bank transfer' : 'Register') }}
                     </button>
                 </form>
             </aside>

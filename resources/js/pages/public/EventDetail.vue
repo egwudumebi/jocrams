@@ -13,11 +13,14 @@ import { applyDynamicEventSeo } from '../../composables/useSeo';
 import { useSiteBranding } from '../../composables/useSiteBranding';
 import EventBannerThumb from '../../components/admin/EventBannerThumb.vue';
 import EventMembershipNumberPanel from '../../components/events/EventMembershipNumberPanel.vue';
+import BankTransferCard from '../../components/payments/BankTransferCard.vue';
+import { useOrgInfo } from '../../composables/useOrgInfo';
 
 const route = useRoute();
 const router = useRouter();
 const { isMemberAuthenticated, memberUser, memberToken, getMemberClient } = useAuth();
 const { branding, loadBranding } = useSiteBranding();
+const { bank, loadOrgInfo } = useOrgInfo();
 
 const event = ref(null);
 const loading = ref(true);
@@ -26,6 +29,7 @@ const message = ref('');
 const error = ref('');
 const membershipVerified = ref(false);
 const confirmedRegistration = ref(null);
+const awaitingBankTransfer = ref(null);
 
 const form = ref({
     name: '',
@@ -36,7 +40,7 @@ const form = ref({
 });
 
 onMounted(async () => {
-    await loadBranding();
+    await Promise.all([loadBranding(), loadOrgInfo()]);
     await loadEvent();
     if (memberUser.value) {
         form.value.name = memberUser.value.name || '';
@@ -161,7 +165,7 @@ async function register() {
 async function startPayment() {
     const payload = {
         ...form.value,
-        gateway: 'paystack',
+        gateway: 'manual',
         idempotency_key: `event-${event.value.uuid}-${Date.now()}`,
     };
 
@@ -169,11 +173,28 @@ async function startPayment() {
     const path = `/events/${event.value.uuid}/payments/initialize`;
     const { data } = await client.post(path, payload);
 
-    if (data.data?.authorization_url) {
-        window.location.href = data.data.authorization_url;
-    } else {
-        error.value = 'Unable to start payment.';
+    if (data.data?.bank_transfer && data.data?.related_uuid) {
+        if (isMemberAuthenticated.value) {
+            const params = new URLSearchParams({
+                purpose: 'event_fee',
+                related: data.data.related_uuid,
+                amount: String(data.data.fee || fee.value),
+            });
+            window.location.href = `/member/payments?${params.toString()}`;
+            return;
+        }
+
+        awaitingBankTransfer.value = {
+            related_uuid: data.data.related_uuid,
+            fee: data.data.fee || fee.value,
+            currency: data.data.currency || 'NGN',
+            registration_number: data.data.registration?.registration_number,
+        };
+        message.value = data.message || 'Transfer the fee using the bank details below, then email your receipt or sign in to upload it.';
+        return;
     }
+
+    error.value = 'Unable to start bank transfer registration.';
 }
 
 async function submitRegistration() {
@@ -271,6 +292,30 @@ function onMembershipInvalid() {
                         <div v-if="error" class="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{{ error }}</div>
 
                         <div
+                            v-if="awaitingBankTransfer"
+                            class="mt-5 space-y-4"
+                        >
+                            <div class="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-sm text-amber-900">
+                                <p class="font-semibold">Bank transfer required</p>
+                                <p class="mt-1">
+                                    Amount:
+                                    <span class="font-semibold">
+                                        {{ awaitingBankTransfer.currency }} {{ Number(awaitingBankTransfer.fee).toLocaleString() }}
+                                    </span>
+                                </p>
+                                <p v-if="awaitingBankTransfer.registration_number" class="mt-1">
+                                    Registration {{ awaitingBankTransfer.registration_number }}
+                                </p>
+                                <p class="mt-2">
+                                    After transferring, email your receipt or
+                                    <RouterLink to="/member/login" class="font-semibold underline">sign in</RouterLink>
+                                    and upload it from Payments.
+                                </p>
+                            </div>
+                            <BankTransferCard :bank="bank" />
+                        </div>
+
+                        <div
                             v-if="confirmedRegistration"
                             class="mt-5 rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 via-white to-white p-5"
                         >
@@ -302,7 +347,7 @@ function onMembershipInvalid() {
                         <div v-else-if="isFull" class="mt-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                             This event is full.
                         </div>
-                        <form v-else-if="!confirmedRegistration" class="mt-6 space-y-4" @submit.prevent="submitRegistration">
+                        <form v-else-if="!confirmedRegistration && !awaitingBankTransfer" class="mt-6 space-y-4" @submit.prevent="submitRegistration">
                             <div>
                                 <label class="label">Full name</label>
                                 <input v-model="form.name" required class="input" />
@@ -340,7 +385,7 @@ function onMembershipInvalid() {
                                 class="btn-institutional w-full"
                                 :disabled="submitting || !membershipReady"
                             >
-                                {{ submitting ? 'Processing…' : (isPaid ? 'Pay & Register' : 'Register') }}
+                                {{ submitting ? 'Processing…' : (isPaid ? 'Continue to bank transfer' : 'Register') }}
                             </button>
                             <p v-if="event.visibility === 'members_only' && !isMemberAuthenticated" class="text-center text-sm text-text-secondary">
                                 <RouterLink to="/member/login" class="font-semibold text-institutional hover:underline">Sign in</RouterLink>

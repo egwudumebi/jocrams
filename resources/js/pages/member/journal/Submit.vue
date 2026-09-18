@@ -199,24 +199,17 @@ function onDrop(event) {
     }
 }
 
-function paymentIdempotencyKey(submissionId) {
-    return `journal-submission-${submissionId}-${Date.now()}`;
-}
-
-async function initiatePayment(submissionId) {
-    const { data } = await getJournalClient().post(`/submissions/${submissionId}/payments/initialize`, {
-        gateway: 'paystack',
-        idempotency_key: paymentIdempotencyKey(submissionId),
+function paymentRedirectQuery(submissionId, fee) {
+    const params = new URLSearchParams({
+        purpose: 'journal_submission_fee',
+        related: submissionId,
     });
 
-    const redirectUrl = data.authorization_url || data.data?.authorization_url;
-
-    if (redirectUrl) {
-        window.location.href = redirectUrl;
-        return;
+    if (fee) {
+        params.set('amount', String(fee));
     }
 
-    router.push(`/member/journal/${submissionId}`);
+    return params.toString();
 }
 
 async function submitManuscript() {
@@ -262,7 +255,7 @@ async function submitManuscript() {
         });
 
         if (data.requires_payment && data.submission_fee > 0) {
-            await initiatePayment(data.submission_id);
+            router.push(`/member/payments?${paymentRedirectQuery(data.submission_id, data.submission_fee)}`);
             return;
         }
 

@@ -84,16 +84,19 @@ class EventRegistrationService
         );
     }
 
-    public function initiateMemberPayment(
+    /**
+     * Reserve a pending registration for bank-transfer payment (no gateway checkout).
+     *
+     * @return array{registration: EventRegistration, fee: float, currency: string}
+     */
+    public function beginMemberBankTransfer(
         User $user,
         Event $event,
-        PaymentGateway $gateway,
-        string $idempotencyKey,
         ?string $memberType = null,
         ?string $name = null,
         ?string $email = null,
         ?string $phone = null,
-    ): Payment {
+    ): array {
         $this->assertEventAvailable($event, $user);
 
         $memberType = $this->memberTypeResolver->resolve($user, $memberType);
@@ -114,26 +117,24 @@ class EventRegistrationService
             user: $user,
         )->load('event');
 
-        return $this->paymentService->initiateEventRegistration(
-            user: $user,
-            registration: $registration,
-            amount: $fee,
-            gateway: $gateway,
-            idempotencyKey: $idempotencyKey,
-            memberType: $memberType,
-        );
+        return [
+            'registration' => $registration,
+            'fee' => $fee,
+            'currency' => config('payments.currency', 'NGN'),
+        ];
     }
 
-    public function initiateGuestPayment(
+    /**
+     * @return array{registration: EventRegistration, fee: float, currency: string}
+     */
+    public function beginGuestBankTransfer(
         Event $event,
-        PaymentGateway $gateway,
-        string $idempotencyKey,
         string $name,
         string $email,
         ?string $phone = null,
         ?string $memberType = null,
         ?string $membershipNumber = null,
-    ): Payment {
+    ): array {
         $this->assertEventAvailable($event);
 
         if ($event->visibility === Visibility::MembersOnly) {
@@ -159,21 +160,74 @@ class EventRegistrationService
             phone: $phone,
             memberType: $memberType,
             member: $member,
+        )->load('event');
+
+        return [
+            'registration' => $registration,
+            'fee' => $fee,
+            'currency' => config('payments.currency', 'NGN'),
+        ];
+    }
+
+    public function initiateMemberPayment(
+        User $user,
+        Event $event,
+        PaymentGateway $gateway,
+        string $idempotencyKey,
+        ?string $memberType = null,
+        ?string $name = null,
+        ?string $email = null,
+        ?string $phone = null,
+    ): Payment {
+        if ($gateway === PaymentGateway::Manual) {
+            throw ValidationException::withMessages([
+                'gateway' => ['Use the bank transfer registration flow instead of a payment gateway.'],
+            ]);
+        }
+
+        $result = $this->beginMemberBankTransfer($user, $event, $memberType, $name, $email, $phone);
+
+        return $this->paymentService->initiateEventRegistration(
+            user: $user,
+            registration: $result['registration'],
+            amount: $result['fee'],
+            gateway: $gateway,
+            idempotencyKey: $idempotencyKey,
+            memberType: $memberType ?? $result['registration']->member_type,
         );
+    }
+
+    public function initiateGuestPayment(
+        Event $event,
+        PaymentGateway $gateway,
+        string $idempotencyKey,
+        string $name,
+        string $email,
+        ?string $phone = null,
+        ?string $memberType = null,
+        ?string $membershipNumber = null,
+    ): Payment {
+        if ($gateway === PaymentGateway::Manual) {
+            throw ValidationException::withMessages([
+                'gateway' => ['Use the bank transfer registration flow instead of a payment gateway.'],
+            ]);
+        }
+
+        $result = $this->beginGuestBankTransfer($event, $name, $email, $phone, $memberType, $membershipNumber);
 
         return $this->paymentService->initiateGuestPayment(
             email: $email,
             name: $name,
-            amount: $fee,
+            amount: $result['fee'],
             gateway: $gateway,
             idempotencyKey: $idempotencyKey,
-            payable: $registration,
+            payable: $result['registration'],
             phone: $phone,
             description: "Event registration - {$event->title}",
             metadata: [
                 'event_uuid' => $event->uuid,
-                'member_type' => $memberType,
-                'membership_number' => $member?->membership_number,
+                'member_type' => $result['registration']->member_type,
+                'membership_number' => $membershipNumber,
             ],
         );
     }

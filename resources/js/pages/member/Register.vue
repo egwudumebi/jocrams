@@ -48,9 +48,9 @@ function formatDues(amount) {
         title="Join our association"
         subtitle="Create your account to start a membership application. Choose your tier during the application process."
         :bullets="[
-            'Apply online with document upload',
-            'Pay dues securely when approved',
-            'Receive your digital membership card',
+            'Create your account and complete your application',
+            'Pay the registration fee by UBA bank transfer',
+            'Appear in the public directory after admin approval',
         ]"
     >
         <template #aside>

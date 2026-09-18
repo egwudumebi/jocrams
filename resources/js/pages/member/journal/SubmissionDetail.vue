@@ -16,6 +16,23 @@ const message = ref('');
 const error = ref('');
 
 const submissionKey = computed(() => route.params.id);
+const needsPayment = computed(() => submission.value?.status === 'payment_pending');
+const paymentHref = computed(() => {
+    if (!submission.value) {
+        return '/member/payments';
+    }
+
+    const params = new URLSearchParams({
+        purpose: 'journal_submission_fee',
+        related: submission.value.id,
+    });
+
+    if (submission.value.submission_fee_amount) {
+        params.set('amount', String(submission.value.submission_fee_amount));
+    }
+
+    return `/member/payments?${params.toString()}`;
+});
 
 onMounted(load);
 
@@ -79,7 +96,6 @@ async function resubmitRevision() {
         await getJournalClient().post(`/submissions/${submission.value.id}/resubmit`, fd, {
             headers: { 'Content-Type': 'multipart/form-data' },
         });
-
         message.value = 'Revision resubmitted successfully.';
         error.value = '';
         await load();
@@ -106,6 +122,19 @@ async function resubmitRevision() {
 
             <p v-if="message" class="mt-3 text-sm text-green-600">{{ message }}</p>
             <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+
+            <div
+                v-if="needsPayment"
+                class="mt-6 rounded-2xl border border-amber-200 bg-amber-50/80 p-5"
+            >
+                <p class="font-semibold text-amber-900">Manuscript review fee required</p>
+                <p class="mt-1 text-sm text-amber-800">
+                    Transfer the fee to the UBA account, then upload your receipt so an admin can verify it in the app.
+                </p>
+                <RouterLink :to="paymentHref" class="btn-institutional mt-4 inline-flex">
+                    Submit payment receipt
+                </RouterLink>
+            </div>
 
             <div class="mt-6 grid gap-6 lg:grid-cols-3">
                 <div class="card space-y-4 p-6 lg:col-span-2">

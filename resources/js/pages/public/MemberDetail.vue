@@ -19,6 +19,7 @@ const { branding, loadBranding } = useSiteBranding();
 const member = ref(null);
 const loading = ref(true);
 const error = ref('');
+const profileImageFailed = ref(false);
 
 const locationLabel = computed(() => {
     if (!member.value) {
@@ -107,10 +108,11 @@ watch(member, (value) => {
                 <div v-else class="mt-8 overflow-hidden rounded-2xl bg-gradient-to-r from-institutional to-brand-700 shadow-lg">
                     <div class="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:p-8">
                         <img
-                            v-if="member.profile_image"
+                            v-if="member.profile_image && !profileImageFailed"
                             :src="member.profile_image"
                             :alt="member.name"
                             class="size-24 rounded-full border-4 border-white/30 object-cover shadow-md sm:size-28"
+                            @error="profileImageFailed = true"
                         />
                         <div
                             v-else

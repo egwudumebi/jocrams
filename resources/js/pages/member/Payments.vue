@@ -1,29 +1,31 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import {
     ArrowDownTrayIcon,
     BanknotesIcon,
     CheckCircleIcon,
     ClockIcon,
-    CreditCardIcon,
+    DocumentTextIcon,
     ReceiptRefundIcon,
 } from '@heroicons/vue/24/outline';
 import AdminAlert from '../../components/admin/AdminAlert.vue';
 import AdminEmptyState from '../../components/admin/AdminEmptyState.vue';
 import AdminPageIntro from '../../components/admin/AdminPageIntro.vue';
 import AdminPanel from '../../components/admin/AdminPanel.vue';
-import { publicApi } from '../../api/client';
+import BankTransferCard from '../../components/payments/BankTransferCard.vue';
+import PaymentProofForm from '../../components/payments/PaymentProofForm.vue';
 import { useAuth } from '../../composables/useAuth';
+import { useOrgInfo } from '../../composables/useOrgInfo';
 import { extractApiError } from '../../utils/apiError';
 
-const { getMemberClient, memberUser, memberToken, fetchMemberProfile } = useAuth();
+const { getMemberClient, memberUser, fetchMemberProfile } = useAuth();
+const { bank, fees, loadOrgInfo } = useOrgInfo();
 const route = useRoute();
-const router = useRouter();
 
 const payments = ref([]);
+const proofs = ref([]);
 const loading = ref(true);
-const payingDues = ref(false);
 const downloadingUuid = ref('');
 const message = ref('');
 const error = ref('');
@@ -33,46 +35,42 @@ const renewal = computed(() => memberUser.value?.member?.renewal ?? null);
 const canRenewMembership = computed(() => renewal.value?.can_renew ?? false);
 const annualDues = computed(() => Number(memberUser.value?.member?.tier?.annual_dues || 0));
 const currency = computed(() => memberUser.value?.member?.tier?.currency || 'NGN');
+const defaultProofAmount = computed(() => {
+    if (route.query.amount) {
+        return Number(route.query.amount);
+    }
+
+    if (route.query.purpose === 'registration') {
+        return Number(fees.value?.membership_registration || 20000);
+    }
+
+    if (canRenewMembership.value || hasActiveMembership.value) {
+        return annualDues.value || Number(fees.value?.membership_registration || 20000);
+    }
+
+    return Number(fees.value?.membership_registration || 20000);
+});
+
+const defaultPurpose = computed(() => {
+    if (typeof route.query.purpose === 'string' && route.query.purpose) {
+        return route.query.purpose;
+    }
+
+    return hasActiveMembership.value ? 'dues' : 'registration';
+});
+
+const relatedUuid = computed(() => (typeof route.query.related === 'string' ? route.query.related : ''));
 
 const successfulPayments = computed(() => payments.value.filter((payment) => payment.status === 'successful'));
-const pendingPayments = computed(() => payments.value.filter((payment) => ['pending', 'processing'].includes(payment.status)));
+const pendingProofs = computed(() => proofs.value.filter((proof) => proof.status === 'pending'));
 const totalPaid = computed(() => successfulPayments.value.reduce((sum, payment) => sum + Number(payment.amount || 0), 0));
 
 onMounted(async () => {
-    await fetchMemberProfile();
-
-    const reference = route.query.reference || route.query.trxref;
-    if (typeof reference === 'string' && reference) {
-        await verifyPayment(reference);
-    } else {
-        await load();
-    }
+    await Promise.all([fetchMemberProfile(), loadOrgInfo()]);
+    await Promise.all([loadPayments(), loadProofs()]);
 });
 
-async function verifyPayment(reference) {
-    loading.value = true;
-    message.value = '';
-    error.value = '';
-
-    try {
-        const { data } = await publicApi(memberToken.value).get(`/payments/verify/${encodeURIComponent(reference)}`);
-        message.value = data.message || 'Payment verified successfully.';
-
-        if (data.redirect_to && data.redirect_to !== '/member/payments') {
-            router.replace({ path: data.redirect_to, query: { reference } });
-            return;
-        }
-
-        await fetchMemberProfile();
-    } catch (e) {
-        error.value = extractApiError(e, 'Unable to verify payment.');
-    } finally {
-        await load();
-        router.replace({ path: route.path, query: {} });
-    }
-}
-
-async function load() {
+async function loadPayments() {
     loading.value = true;
     error.value = '';
 
@@ -81,9 +79,21 @@ async function load() {
         payments.value = data.data || [];
     } catch (e) {
         payments.value = [];
-        error.value = extractApiError(e, 'Unable to load payment history.');
+        // Inactive members cannot list gateway payments — proofs still work.
+        if (e.response?.status !== 403) {
+            error.value = extractApiError(e, 'Unable to load payment history.');
+        }
     } finally {
         loading.value = false;
+    }
+}
+
+async function loadProofs() {
+    try {
+        const { data } = await getMemberClient().get('/payment-proofs');
+        proofs.value = data.data || [];
+    } catch {
+        proofs.value = [];
     }
 }
 
@@ -111,9 +121,11 @@ function purposeLabel(purpose) {
     const map = {
         dues: 'Annual dues',
         donation: 'Donation',
-        event: 'Event registration',
-        application: 'Application fee',
+        event_fee: 'Event registration',
+        registration: 'Registration fee',
         renewal: 'Membership renewal',
+        journal_submission_fee: 'Journal review fee',
+        journal_publication_fee: 'Journal publication fee',
     };
 
     return map[purpose] || String(purpose || 'Payment').replaceAll('_', ' ');
@@ -122,11 +134,13 @@ function purposeLabel(purpose) {
 function statusLabel(status) {
     const map = {
         successful: 'Successful',
-        pending: 'Pending',
+        pending: 'Pending review',
         processing: 'Processing',
         failed: 'Failed',
         cancelled: 'Cancelled',
         expired: 'Expired',
+        approved: 'Approved',
+        rejected: 'Rejected',
     };
 
     return map[status] || status;
@@ -135,9 +149,11 @@ function statusLabel(status) {
 function statusClass(status) {
     const map = {
         successful: 'bg-emerald-100 text-emerald-800',
+        approved: 'bg-emerald-100 text-emerald-800',
         pending: 'bg-amber-100 text-amber-800',
         processing: 'bg-amber-100 text-amber-800',
         failed: 'bg-red-100 text-red-800',
+        rejected: 'bg-red-100 text-red-800',
         cancelled: 'bg-slate-100 text-slate-600',
         expired: 'bg-slate-100 text-slate-600',
     };
@@ -173,50 +189,65 @@ async function downloadReceipt(payment) {
     }
 }
 
-async function payDues() {
-    payingDues.value = true;
-    message.value = '';
-    error.value = '';
-
-    try {
-        const { data } = await getMemberClient().post('/payments/dues', {
-            gateway: 'paystack',
-            idempotency_key: `dues-${Date.now()}`,
-        });
-
-        if (data.data?.authorization_url) {
-            window.location.href = data.data.authorization_url;
-            return;
-        }
-
-        error.value = 'Unable to start payment. Please try again.';
-    } catch (e) {
-        error.value = extractApiError(e, 'Unable to initiate dues payment.');
-    } finally {
-        payingDues.value = false;
-    }
+async function onProofSubmitted() {
+    message.value = 'Receipt submitted. An administrator will verify it in the app.';
+    await loadProofs();
 }
 </script>
 
 <template>
     <div>
-        <AdminPageIntro description="Review your payment history, track transaction status, and pay annual membership dues securely.">
-            <template #actions>
-                <button
-                    v-if="hasActiveMembership && canRenewMembership"
-                    type="button"
-                    class="btn-institutional inline-flex items-center gap-2"
-                    :disabled="payingDues"
-                    @click="payDues"
-                >
-                    <CreditCardIcon class="size-4" />
-                    {{ payingDues ? 'Redirecting…' : 'Pay annual dues' }}
-                </button>
-            </template>
-        </AdminPageIntro>
+        <AdminPageIntro description="Pay by UBA bank transfer, upload your receipt in the app, and wait for admin verification." />
 
         <AdminAlert v-if="message" type="success">{{ message }}</AdminAlert>
         <AdminAlert v-if="error" type="error">{{ error }}</AdminAlert>
+
+        <div class="mb-6">
+            <BankTransferCard
+                :bank="bank"
+                :fees="fees"
+                show-fees
+                title="Pay directly to UBA"
+                description="Transfer the required fee, then submit your receipt below so an admin can verify it on the platform."
+            />
+        </div>
+
+        <div class="mb-6 grid gap-6 xl:grid-cols-2">
+            <PaymentProofForm
+                :purpose="defaultPurpose"
+                :amount="defaultProofAmount"
+                :related-uuid="relatedUuid"
+                @submitted="onProofSubmitted"
+            />
+
+            <AdminPanel title="Submitted receipts" description="Track verification status for receipts you uploaded.">
+                <div v-if="proofs.length === 0" class="rounded-2xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">
+                    No receipts submitted yet.
+                </div>
+                <ul v-else class="space-y-3">
+                    <li
+                        v-for="proof in proofs"
+                        :key="proof.uuid"
+                        class="rounded-2xl border border-slate-100 p-4"
+                    >
+                        <div class="flex flex-wrap items-start justify-between gap-3">
+                            <div>
+                                <p class="font-semibold text-slate-900">{{ purposeLabel(proof.purpose) }}</p>
+                                <p class="mt-1 text-sm text-slate-600">
+                                    {{ proof.currency }} {{ Number(proof.amount).toLocaleString() }}
+                                    <span v-if="proof.payer_reference"> · Ref {{ proof.payer_reference }}</span>
+                                </p>
+                                <p class="mt-1 text-xs text-slate-400">{{ formatDate(proof.created_at) }}</p>
+                                <p v-if="proof.rejection_reason" class="mt-2 text-sm text-red-600">{{ proof.rejection_reason }}</p>
+                            </div>
+                            <span class="badge capitalize" :class="statusClass(proof.status)">
+                                {{ statusLabel(proof.status) }}
+                            </span>
+                        </div>
+                    </li>
+                </ul>
+            </AdminPanel>
+        </div>
 
         <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div class="card-modern p-5">
@@ -225,7 +256,7 @@ async function payDues() {
                         <ReceiptRefundIcon class="size-6" />
                     </span>
                     <div>
-                        <p class="text-sm text-slate-500">Total payments</p>
+                        <p class="text-sm text-slate-500">Verified payments</p>
                         <p class="text-2xl font-bold text-slate-900">{{ loading ? '—' : payments.length }}</p>
                     </div>
                 </div>
@@ -247,8 +278,8 @@ async function payDues() {
                         <ClockIcon class="size-6" />
                     </span>
                     <div>
-                        <p class="text-sm text-slate-500">Pending</p>
-                        <p class="text-2xl font-bold text-slate-900">{{ loading ? '—' : pendingPayments.length }}</p>
+                        <p class="text-sm text-slate-500">Pending receipts</p>
+                        <p class="text-2xl font-bold text-slate-900">{{ pendingProofs.length }}</p>
                     </div>
                 </div>
             </div>
@@ -295,27 +326,17 @@ async function payDues() {
                 <div class="mt-5 rounded-2xl border border-institutional/15 bg-gradient-to-br from-institutional/8 via-white to-white p-5">
                     <p class="text-sm font-semibold text-institutional">Need to renew?</p>
                     <p v-if="canRenewMembership" class="mt-1 text-sm text-slate-600">
-                        Pay your annual dues securely online. You will be redirected to our payment gateway to complete the transaction.
+                        Transfer your annual dues to the UBA account, then submit the receipt above for admin verification.
                     </p>
                     <p v-else class="mt-1 text-sm text-slate-600">
                         {{ renewalNotice() }}
                     </p>
-                    <button
-                        type="button"
-                        class="mt-4 inline-flex items-center gap-2"
-                        :class="canRenewMembership ? 'btn-institutional' : 'btn-secondary cursor-not-allowed opacity-60'"
-                        :disabled="payingDues || !canRenewMembership"
-                        @click="payDues"
-                    >
-                        <CreditCardIcon class="size-4" />
-                        {{ payingDues ? 'Redirecting…' : 'Pay annual dues' }}
-                    </button>
                 </div>
             </AdminPanel>
 
             <AdminPanel
-                title="Payment history"
-                description="All transactions linked to your member account."
+                title="Verified payment history"
+                description="Payments confirmed by an administrator after receipt review."
                 :class="hasActiveMembership ? '' : 'xl:col-span-2'"
             >
                 <div v-if="loading" class="flex justify-center py-16">
@@ -324,16 +345,11 @@ async function payDues() {
 
                 <AdminEmptyState
                     v-else-if="payments.length === 0"
-                    title="No payments recorded"
-                    description="When you pay annual dues, event fees, or other membership charges, they will appear here with reference numbers and status."
+                    title="No verified payments yet"
+                    description="After an admin approves your uploaded receipt, the payment will appear here."
                 >
                     <template #icon>
-                        <ReceiptRefundIcon class="size-6" />
-                    </template>
-                    <template v-if="hasActiveMembership && canRenewMembership" #action>
-                        <button type="button" class="btn-institutional" :disabled="payingDues" @click="payDues">
-                            Pay annual dues
-                        </button>
+                        <DocumentTextIcon class="size-6" />
                     </template>
                 </AdminEmptyState>
 

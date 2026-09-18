@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\Admin\NewsArticleController as AdminNewsArticleC
 use App\Http\Controllers\Api\V1\Admin\NotificationController as AdminNotificationController;
 use App\Http\Controllers\Api\V1\Admin\PageController as AdminPageController;
 use App\Http\Controllers\Api\V1\Admin\PaymentController as AdminPaymentController;
+use App\Http\Controllers\Api\V1\Admin\PaymentProofController as AdminPaymentProofController;
 use App\Http\Controllers\Api\V1\Admin\NotificationTemplateController;
 use App\Http\Controllers\Api\V1\Admin\ReportsController as AdminReportsController;
 use App\Http\Controllers\Api\V1\Admin\SettingsController as AdminSettingsController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\Api\V1\Member\EventRegistrationController as MemberEven
 use App\Http\Controllers\Api\V1\Member\MembershipApplicationController;
 use App\Http\Controllers\Api\V1\Member\NotificationController as MemberNotificationController;
 use App\Http\Controllers\Api\V1\Member\PaymentController as MemberPaymentController;
+use App\Http\Controllers\Api\V1\Member\PaymentProofController as MemberPaymentProofController;
 use App\Http\Controllers\Api\V1\Member\SupportMessageController as MemberSupportMessageController;
 use App\Http\Controllers\Api\V1\Public\BranchController;
 use App\Http\Controllers\Api\V1\Public\ContactController;
@@ -52,6 +54,7 @@ use App\Http\Controllers\Api\V1\Public\MemberController as PublicMemberControlle
 use App\Http\Controllers\Api\V1\Public\MembershipTierController;
 use App\Http\Controllers\Api\V1\Public\NewsController;
 use App\Http\Controllers\Api\V1\Public\OpenJournalCallsController;
+use App\Http\Controllers\Api\V1\Public\OrgInfoController;
 use App\Http\Controllers\Api\V1\Public\OnboardingController;
 use App\Http\Controllers\Api\V1\Public\PageController as PublicPageController;
 use App\Http\Controllers\Api\V1\Public\PaymentVerifyController;
@@ -102,6 +105,7 @@ Route::prefix('v1')->group(function (): void {
     Route::prefix('public')->middleware('throttle:public')->group(function (): void {
         Route::get('site-banner', SiteBannerController::class);
         Route::get('site-branding', SiteBrandingController::class);
+        Route::get('org-info', OrgInfoController::class);
         Route::get('sicama', SicamaProfileController::class);
         Route::get('payments/verify/{reference}', PaymentVerifyController::class)
             ->middleware('throttle:verify');
@@ -176,6 +180,11 @@ Route::prefix('v1')->group(function (): void {
             Route::get('notifications/unread-count', [MemberNotificationController::class, 'unreadCount']);
             Route::post('notifications/read-all', [MemberNotificationController::class, 'markAllRead']);
             Route::post('notifications/{notificationLog}/read', [MemberNotificationController::class, 'markRead']);
+
+            Route::get('payment-proofs', [MemberPaymentProofController::class, 'index']);
+            Route::post('payment-proofs', [MemberPaymentProofController::class, 'store'])
+                ->middleware('throttle:uploads');
+            Route::get('payment-proofs/{paymentProof:uuid}/download', [MemberPaymentProofController::class, 'download']);
         });
 
         Route::get('auth/email/verify/{id}/{hash}', VerifyEmailController::class)
@@ -323,6 +332,18 @@ Route::prefix('v1')->group(function (): void {
             Route::get('payments/stats', [AdminPaymentController::class, 'stats'])
                 ->middleware('permission:payments.view');
             Route::post('payments', [AdminPaymentController::class, 'store'])
+                ->middleware('permission:payments.override');
+            Route::get('payment-proofs/pending-count', [AdminPaymentProofController::class, 'pendingCount'])
+                ->middleware('permission:payments.view');
+            Route::get('payment-proofs', [AdminPaymentProofController::class, 'index'])
+                ->middleware('permission:payments.view');
+            Route::get('payment-proofs/{paymentProof:uuid}', [AdminPaymentProofController::class, 'show'])
+                ->middleware('permission:payments.view');
+            Route::get('payment-proofs/{paymentProof:uuid}/download', [AdminPaymentProofController::class, 'download'])
+                ->middleware('permission:payments.view');
+            Route::post('payment-proofs/{paymentProof:uuid}/approve', [AdminPaymentProofController::class, 'approve'])
+                ->middleware('permission:payments.override');
+            Route::post('payment-proofs/{paymentProof:uuid}/reject', [AdminPaymentProofController::class, 'reject'])
                 ->middleware('permission:payments.override');
             Route::get('payments/{payment:uuid}', [AdminPaymentController::class, 'show'])
                 ->middleware('permission:payments.view');

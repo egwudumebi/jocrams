@@ -68,11 +68,20 @@ function closeMobileNav() {
                     <RouterLink
                         v-for="item in nav"
                         :key="item.to"
+                        v-slot="{ href, navigate, isActive, isExactActive }"
                         :to="item.to"
-                        class="rounded-lg px-3.5 py-2 text-sm font-medium text-white/75 transition hover:bg-white/10 hover:text-white xl:px-4"
-                        active-class="!bg-white/10 !text-white"
+                        custom
                     >
-                        {{ item.label }}
+                        <a
+                            :href="href"
+                            class="rounded-lg px-3.5 py-2 text-sm font-medium transition xl:px-4"
+                            :class="(item.to === '/' ? isExactActive : isActive)
+                                ? 'bg-white/10 text-white'
+                                : 'text-white/75 hover:bg-white/10 hover:text-white'"
+                            @click="navigate"
+                        >
+                            {{ item.label }}
+                        </a>
                     </RouterLink>
                 </nav>
 
@@ -106,12 +115,20 @@ function closeMobileNav() {
                 <RouterLink
                     v-for="item in nav"
                     :key="item.to"
+                    v-slot="{ href, navigate, isActive, isExactActive }"
                     :to="item.to"
-                    class="block rounded-lg px-4 py-3 text-sm font-medium text-white/80 hover:bg-white/10 hover:text-white"
-                    active-class="!bg-white/10 !text-white"
-                    @click="closeMobileNav"
+                    custom
                 >
-                    {{ item.label }}
+                    <a
+                        :href="href"
+                        class="block rounded-lg px-4 py-3 text-sm font-medium"
+                        :class="(item.to === '/' ? isExactActive : isActive)
+                            ? 'bg-white/10 text-white'
+                            : 'text-white/80 hover:bg-white/10 hover:text-white'"
+                        @click="(e) => { navigate(e); closeMobileNav(); }"
+                    >
+                        {{ item.label }}
+                    </a>
                 </RouterLink>
             </nav>
             <div class="mt-auto space-y-2 border-t border-white/10 px-4 py-4">

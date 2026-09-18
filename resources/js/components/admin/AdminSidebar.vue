@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 import {
+    BanknotesIcon,
     CalendarDaysIcon,
     ChartBarIcon,
     ChevronDownIcon,
@@ -9,6 +10,7 @@ import {
     DocumentTextIcon,
     HomeIcon,
     LifebuoyIcon,
+    ReceiptPercentIcon,
     UsersIcon,
 } from '@heroicons/vue/24/outline';
 import {
@@ -40,6 +42,8 @@ const sectionIcons = {
 };
 
 const standaloneIcons = {
+    'admin.payment-proofs': ReceiptPercentIcon,
+    'admin.payments': BanknotesIcon,
     'admin.reports': ChartBarIcon,
     'admin.settings': Cog6ToothIcon,
 };

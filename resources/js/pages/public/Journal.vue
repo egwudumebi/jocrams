@@ -1,10 +1,18 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
-import { ArrowRightIcon, BookOpenIcon, LockClosedIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
+import {
+    ArrowRightIcon,
+    BookOpenIcon,
+    LightBulbIcon,
+    LockClosedIcon,
+    SparklesIcon,
+    UserGroupIcon,
+} from '@heroicons/vue/24/outline';
 import { journalApi } from '../../api/client';
 import JournalStatusBadge from '../../components/journal/JournalStatusBadge.vue';
 import { useSiteBranding } from '../../composables/useSiteBranding';
+import { useOrgInfo } from '../../composables/useOrgInfo';
 import { formatJournalDate, downloadJournalDocument } from '../../utils/journal';
 import { useAuth } from '../../composables/useAuth';
 
@@ -12,9 +20,14 @@ const articles = ref([]);
 const loading = ref(true);
 const { memberToken } = useAuth();
 const { branding, loadBranding } = useSiteBranding();
+const { journal, loadOrgInfo } = useOrgInfo();
+
+const areas = computed(() => (journal.value?.areas_of_interest || []).slice(0, 12));
+const publishTypes = computed(() => journal.value?.what_we_publish || []);
+const whyPublish = computed(() => journal.value?.why_publish || []);
 
 onMounted(async () => {
-    await loadBranding();
+    await Promise.all([loadBranding(), loadOrgInfo()]);
 
     try {
         const { data } = await journalApi(memberToken.value).get('/submissions/public');
@@ -31,6 +44,14 @@ async function handleDownload(article) {
 
     await downloadJournalDocument(article.document_url, memberToken.value || null);
 }
+
+function paragraphs(text) {
+    if (!text) {
+        return [];
+    }
+
+    return String(text).split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+}
 </script>
 
 <template>
@@ -46,24 +67,30 @@ async function handleDownload(article) {
                         <p class="mt-3 text-lg font-medium text-institutional">
                             {{ branding?.journal_full_name || branding?.site_tagline }}
                         </p>
+                        <p v-if="journal?.issn" class="mt-2 font-mono text-sm text-text-secondary">
+                            ISSN: {{ journal.issn }}
+                        </p>
                         <p class="mt-4 max-w-2xl text-base leading-relaxed text-text-secondary">
                             The official peer-reviewed journal of
                             <RouterLink to="/sicama" class="font-medium text-institutional hover:underline">
                                 {{ branding?.parent_org?.short_name || 'SICAMA' }}
                             </RouterLink>.
-                            Browse published manuscripts and explore the editorial team.
+                            Browse published manuscripts, review author guidelines, and meet the editorial team.
                         </p>
                         <blockquote class="mt-5 max-w-2xl border-l-4 border-accent-gold pl-4 text-sm italic text-text-secondary">
-                            “{{ branding?.parent_org?.motto }}”
+                            “{{ journal?.motto || branding?.parent_org?.motto }}”
                         </blockquote>
                         <div class="mt-8 flex flex-wrap gap-3">
+                            <RouterLink to="/journal/author-guidelines" class="btn-gold inline-flex items-center gap-2">
+                                Author guidelines
+                                <ArrowRightIcon class="size-4" aria-hidden="true" />
+                            </RouterLink>
                             <RouterLink to="/journal/editorial-board" class="btn-institutional inline-flex items-center gap-2">
                                 <UserGroupIcon class="size-4" aria-hidden="true" />
                                 Editorial team
                             </RouterLink>
                             <RouterLink to="/member/journal/submit" class="btn-secondary inline-flex items-center gap-2 !rounded-xl">
                                 Submit manuscript
-                                <ArrowRightIcon class="size-4" aria-hidden="true" />
                             </RouterLink>
                         </div>
                     </div>
@@ -86,7 +113,109 @@ async function handleDownload(article) {
             </div>
         </section>
 
-        <section class="bg-slate-50 py-12 sm:py-16">
+        <section class="section-padding bg-white">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="max-w-3xl">
+                    <p class="label-caps text-institutional">About JOCRAMS</p>
+                    <h2 class="mt-2 font-display text-3xl font-bold text-institutional-dark">A scholarly home for communication research</h2>
+                </div>
+                <div class="mt-8 grid gap-6 lg:grid-cols-2">
+                    <div class="space-y-4 rounded-3xl border border-slate-100 bg-surface-muted/40 p-6 sm:p-8">
+                        <p
+                            v-for="(paragraph, index) in paragraphs(journal?.opening_statement)"
+                            :key="`open-${index}`"
+                            class="text-sm leading-relaxed text-text-secondary"
+                        >
+                            {{ paragraph }}
+                        </p>
+                    </div>
+                    <div class="space-y-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+                        <p
+                            v-for="(paragraph, index) in paragraphs(journal?.about)"
+                            :key="`about-${index}`"
+                            class="text-sm leading-relaxed text-text-secondary"
+                        >
+                            {{ paragraph }}
+                        </p>
+                    </div>
+                </div>
+
+                <div class="mt-10 grid gap-6 md:grid-cols-2">
+                    <div class="rounded-3xl bg-gradient-to-br from-institutional-dark to-institutional p-6 text-white sm:p-8">
+                        <LightBulbIcon class="size-8 text-accent-gold" />
+                        <h3 class="mt-4 font-display text-xl font-bold">Our Vision</h3>
+                        <p class="mt-3 text-sm leading-relaxed text-slate-200">{{ journal?.vision }}</p>
+                    </div>
+                    <div class="rounded-3xl border border-institutional/15 bg-white p-6 shadow-sm sm:p-8">
+                        <SparklesIcon class="size-8 text-institutional" />
+                        <h3 class="mt-4 font-display text-xl font-bold text-institutional-dark">Our Mission</h3>
+                        <div class="mt-3 space-y-3">
+                            <p
+                                v-for="(paragraph, index) in paragraphs(journal?.mission)"
+                                :key="`mission-${index}`"
+                                class="text-sm leading-relaxed text-text-secondary"
+                            >
+                                {{ paragraph }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="section-padding bg-surface-muted">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p class="label-caps text-institutional">Scope</p>
+                        <h2 class="mt-2 font-display text-3xl font-bold text-institutional-dark">Areas of scholarly interest</h2>
+                    </div>
+                    <RouterLink to="/journal/author-guidelines" class="link-arrow text-sm">
+                        Full guidelines
+                        <ArrowRightIcon class="size-4" />
+                    </RouterLink>
+                </div>
+                <div class="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    <div
+                        v-for="area in areas"
+                        :key="area"
+                        class="rounded-2xl border border-white bg-white px-4 py-3 text-sm font-medium text-institutional-dark shadow-sm"
+                    >
+                        {{ area }}
+                    </div>
+                </div>
+
+                <div class="mt-12 grid gap-8 lg:grid-cols-2">
+                    <div>
+                        <h3 class="font-display text-xl font-bold text-institutional-dark">What we publish</h3>
+                        <ul class="mt-4 space-y-2">
+                            <li
+                                v-for="item in publishTypes"
+                                :key="item"
+                                class="rounded-xl bg-white px-4 py-3 text-sm text-text-secondary shadow-sm"
+                            >
+                                {{ item }}
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-display text-xl font-bold text-institutional-dark">Why publish with JOCRAMS?</h3>
+                        <div class="mt-4 space-y-3">
+                            <div
+                                v-for="item in whyPublish"
+                                :key="item.title"
+                                class="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm"
+                            >
+                                <p class="font-semibold text-institutional-dark">{{ item.title }}</p>
+                                <p class="mt-1 text-sm leading-relaxed text-text-secondary">{{ item.body }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-white py-12 sm:py-16">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex items-end justify-between gap-4">
                     <div>
@@ -99,6 +228,9 @@ async function handleDownload(article) {
                 <div v-else-if="articles.length === 0" class="mt-10 card p-10 text-center text-slate-500">
                     <BookOpenIcon class="mx-auto size-10 text-slate-300" />
                     <p class="mt-3">No published articles yet.</p>
+                    <RouterLink to="/journal/author-guidelines" class="btn-institutional mt-6 inline-flex">
+                        Read author guidelines
+                    </RouterLink>
                 </div>
                 <div v-else class="mt-10 grid gap-6 lg:grid-cols-2">
                     <article v-for="article in articles" :key="article.id" class="card p-6">

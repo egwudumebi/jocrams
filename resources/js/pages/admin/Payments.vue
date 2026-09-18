@@ -178,9 +178,9 @@ function formatAmount(amount) {
                 </select>
                 <select v-model="filter.gateway" class="input max-w-[140px]" @change="load">
                     <option value="">All gateways</option>
-                    <option value="paystack">Paystack</option>
-                    <option value="flutterwave">Flutterwave</option>
-                    <option value="manual">Manual</option>
+                    <option value="manual">Bank transfer</option>
+                    <option value="paystack">Paystack (legacy)</option>
+                    <option value="flutterwave">Flutterwave (legacy)</option>
                 </select>
                 <input v-model="filter.search" type="search" placeholder="Reference or email" class="input max-w-xs" @keyup.enter="load" />
                 <input v-model="filter.from" type="date" class="input max-w-[150px]" @change="load" />

@@ -133,6 +133,14 @@ const routeSeoBuilders = {
             description: `Meet the editorial board overseeing ${d.journalName}.`,
         };
     },
+    'journal.author-guidelines'(route, branding) {
+        const d = brandingDefaults(branding);
+
+        return {
+            title: withSite('Author Guidelines', d),
+            description: `Manuscript preparation, fees, peer review, and submission requirements for ${d.journalName}.`,
+        };
+    },
     sicama(route, branding) {
         const d = brandingDefaults(branding);
         const orgName = branding.parent_org?.full_name || d.parentOrg;

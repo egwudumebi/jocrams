@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'default_gateway' => env('PAYMENT_DEFAULT_GATEWAY', 'paystack'),
+    'default_gateway' => env('PAYMENT_DEFAULT_GATEWAY', 'manual'),
 
     'paystack' => [
         'secret_key' => env('PAYSTACK_SECRET_KEY'),

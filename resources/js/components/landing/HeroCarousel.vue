@@ -105,8 +105,6 @@ function slideLayerStyle(slide, isActive) {
 <template>
     <div
         class="absolute inset-0"
-        @mouseenter="isPaused = true"
-        @mouseleave="isPaused = false"
     >
         <!-- Background layers -->
         <div
@@ -202,6 +200,10 @@ function slideLayerStyle(slide, isActive) {
                 ? 'bg-white/10 text-white hover:bg-white/20'
                 : 'bg-white/90 text-institutional hover:bg-white'"
             aria-label="Previous slide"
+            @mouseenter="isPaused = true"
+            @mouseleave="isPaused = false"
+            @focus="isPaused = true"
+            @blur="isPaused = false"
             @click="previous"
         >
             <ChevronLeftIcon class="size-5" />
@@ -215,6 +217,10 @@ function slideLayerStyle(slide, isActive) {
                 ? 'bg-white/10 text-white hover:bg-white/20'
                 : 'bg-white/90 text-institutional hover:bg-white'"
             aria-label="Next slide"
+            @mouseenter="isPaused = true"
+            @mouseleave="isPaused = false"
+            @focus="isPaused = true"
+            @blur="isPaused = false"
             @click="next"
         >
             <ChevronRightIcon class="size-5" />

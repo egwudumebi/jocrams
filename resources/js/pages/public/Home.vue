@@ -5,11 +5,8 @@ import {
     ArrowDownTrayIcon,
     ArrowRightIcon,
     BookOpenIcon,
-    CalendarDaysIcon,
     DocumentTextIcon,
-    GlobeAltIcon,
     IdentificationIcon,
-    LinkIcon,
     MapPinIcon,
     NewspaperIcon,
     ShieldCheckIcon,
@@ -17,15 +14,16 @@ import {
     UsersIcon,
 } from '@heroicons/vue/24/outline';
 import { ShieldCheckIcon as ShieldCheckSolidIcon } from '@heroicons/vue/24/solid';
-import AnimatedMetricStat from '../../components/landing/AnimatedMetricStat.vue';
 import HeroCarousel from '../../components/landing/HeroCarousel.vue';
 import ScrollReveal from '../../components/landing/ScrollReveal.vue';
 import SectionHeading from '../../components/landing/SectionHeading.vue';
 import { publicApi } from '../../api/client';
 import { useSiteBranding } from '../../composables/useSiteBranding';
 import { resolveHeroSlides } from '../../composables/useHeroSlides';
+import { useOrgInfo } from '../../composables/useOrgInfo';
 
 const { branding, loadBranding } = useSiteBranding();
+const { journal, loadOrgInfo } = useOrgInfo();
 const heroSlides = ref(resolveHeroSlides({}));
 
 const news = ref([]);
@@ -41,6 +39,14 @@ const benefits = [
     { icon: BookOpenIcon, title: 'Resource Library', description: 'Exclusive publications and research papers.' },
     { icon: TicketIcon, title: 'Event Access', description: 'Priority registration and member discounts.' },
 ];
+
+function paragraphs(text) {
+    if (!text) {
+        return [];
+    }
+
+    return String(text).split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+}
 
 function formatEventDate(dateString) {
     const date = new Date(dateString);
@@ -63,7 +69,7 @@ onMounted(async () => {
     const api = publicApi();
 
     try {
-        await loadBranding();
+        await Promise.all([loadBranding(), loadOrgInfo()]);
         heroSlides.value = resolveHeroSlides({ branding: branding.value });
 
         const [newsRes, eventsRes, downloadsRes, callsRes] = await Promise.all([
@@ -96,7 +102,7 @@ onMounted(async () => {
 <template>
     <div>
         <!-- Hero -->
-        <section class="relative min-h-[34rem] overflow-hidden pb-28 sm:min-h-[38rem] sm:pb-32">
+        <section class="relative min-h-[34rem] overflow-hidden pb-16 sm:min-h-[38rem] sm:pb-20">
             <HeroCarousel v-if="heroSlides.length" :slides="heroSlides" v-slot="{ slide, theme }">
                 <div class="relative z-10 mx-auto max-w-7xl px-4 pt-16 sm:px-6 sm:pt-20 lg:px-8 lg:pt-24">
                     <div class="max-w-2xl lg:max-w-3xl">
@@ -141,9 +147,9 @@ onMounted(async () => {
                     <div class="mt-12 flex flex-wrap gap-3">
                         <div
                             v-for="item in [
-                                { label: 'Trusted Since 1987', icon: ShieldCheckIcon },
-                                { label: '10,000+ Active Members', icon: UsersIcon },
-                                { label: '50+ Industry Partners', icon: LinkIcon },
+                                { label: 'ISSN 3156-2779', icon: BookOpenIcon },
+                                { label: 'Peer-reviewed journal', icon: ShieldCheckIcon },
+                                { label: 'Published by SICAMA', icon: UsersIcon },
                             ]"
                             :key="item.label"
                             class="inline-flex items-center gap-2.5 rounded-full px-4 py-2 text-sm font-medium shadow-sm backdrop-blur-sm"
@@ -164,28 +170,81 @@ onMounted(async () => {
             </HeroCarousel>
         </section>
 
-        <!-- Metrics (floating bar) -->
-        <section class="relative z-10 -mt-20 sm:-mt-24">
+        <!-- About JOCRAMS (from official document) -->
+        <section class="relative z-10 section-padding bg-white pb-8 pt-10 sm:pt-12">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="card-modern grid gap-8 p-8 sm:grid-cols-2 sm:p-10 lg:grid-cols-4 lg:gap-6">
-                    <AnimatedMetricStat :target="12450" suffix="+" label="Active Members">
-                        <UsersIcon class="size-7" aria-hidden="true" />
-                    </AnimatedMetricStat>
-                    <AnimatedMetricStat :target="37" suffix="+" label="Years Established">
-                        <CalendarDaysIcon class="size-7" aria-hidden="true" />
-                    </AnimatedMetricStat>
-                    <AnimatedMetricStat :target="1280" suffix="+" label="Published Documents">
-                        <DocumentTextIcon class="size-7" aria-hidden="true" />
-                    </AnimatedMetricStat>
-                    <AnimatedMetricStat :target="28" label="Branch Offices">
-                        <GlobeAltIcon class="size-7" aria-hidden="true" />
-                    </AnimatedMetricStat>
+                <ScrollReveal>
+                    <div class="max-w-3xl">
+                        <p class="label-caps text-institutional">About JOCRAMS</p>
+                        <h2 class="mt-2 font-display text-3xl font-bold text-institutional-dark sm:text-4xl">
+                            A scholarly home for communication research
+                        </h2>
+                        <blockquote class="mt-5 border-l-4 border-accent-gold pl-4 text-base italic text-text-secondary">
+                            “{{ journal?.motto || branding?.parent_org?.motto || 'Advancing Communication and Media Scholarship for the Good of Society' }}”
+                        </blockquote>
+                    </div>
+                </ScrollReveal>
+
+                <div class="mt-10 grid gap-6 lg:grid-cols-2">
+                    <ScrollReveal>
+                        <div class="space-y-4 rounded-3xl border border-slate-100 bg-surface-muted/40 p-6 sm:p-8">
+                            <p class="text-sm font-semibold uppercase tracking-wide text-institutional">Opening statement</p>
+                            <p
+                                v-for="(paragraph, index) in paragraphs(journal?.opening_statement)"
+                                :key="`open-${index}`"
+                                class="text-sm leading-relaxed text-text-secondary"
+                            >
+                                {{ paragraph }}
+                            </p>
+                        </div>
+                    </ScrollReveal>
+                    <ScrollReveal :delay="80">
+                        <div class="space-y-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
+                            <p class="text-sm font-semibold uppercase tracking-wide text-institutional">About the journal</p>
+                            <p
+                                v-for="(paragraph, index) in paragraphs(journal?.about)"
+                                :key="`about-${index}`"
+                                class="text-sm leading-relaxed text-text-secondary"
+                            >
+                                {{ paragraph }}
+                            </p>
+                        </div>
+                    </ScrollReveal>
+                </div>
+
+                <div class="mt-8 grid gap-6 md:grid-cols-2">
+                    <ScrollReveal>
+                        <div class="rounded-3xl bg-gradient-to-br from-institutional-dark to-institutional p-6 text-white sm:p-8">
+                            <h3 class="font-display text-xl font-bold">Our Vision</h3>
+                            <p class="mt-3 text-sm leading-relaxed text-slate-200">{{ journal?.vision }}</p>
+                        </div>
+                    </ScrollReveal>
+                    <ScrollReveal :delay="80">
+                        <div class="rounded-3xl border border-institutional/15 bg-white p-6 shadow-sm sm:p-8">
+                            <h3 class="font-display text-xl font-bold text-institutional-dark">Our Mission</h3>
+                            <div class="mt-3 space-y-3">
+                                <p
+                                    v-for="(paragraph, index) in paragraphs(journal?.mission)"
+                                    :key="`mission-${index}`"
+                                    class="text-sm leading-relaxed text-text-secondary"
+                                >
+                                    {{ paragraph }}
+                                </p>
+                            </div>
+                        </div>
+                    </ScrollReveal>
+                </div>
+
+                <div class="mt-8 flex flex-wrap gap-3">
+                    <RouterLink to="/journal" class="btn-institutional">Explore the journal</RouterLink>
+                    <RouterLink to="/journal/author-guidelines" class="btn-secondary !rounded-xl">Author guidelines</RouterLink>
+                    <RouterLink to="/sicama" class="btn-secondary !rounded-xl">About SICAMA</RouterLink>
                 </div>
             </div>
         </section>
 
         <!-- News -->
-        <section class="section-padding bg-white pt-28 sm:pt-32">
+        <section class="section-padding bg-surface-muted pt-16 sm:pt-20">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <ScrollReveal>
                     <SectionHeading

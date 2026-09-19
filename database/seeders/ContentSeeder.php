@@ -78,36 +78,9 @@ class ContentSeeder extends Seeder
             ],
         );
 
-        Branch::query()->firstOrCreate(
-            ['slug' => 'lagos-headquarters'],
-            [
-                'name' => 'Lagos Headquarters',
-                'address' => '12 Marina Road',
-                'city' => 'Lagos',
-                'state' => 'Lagos',
-                'country' => 'Nigeria',
-                'phone' => '+2348012345678',
-                'email' => 'lagos@jocrams.test',
-                'contact_person' => 'Branch Coordinator',
-                'is_active' => true,
-                'sort_order' => 1,
-            ],
-        );
-
-        Branch::query()->firstOrCreate(
-            ['slug' => 'abuja-branch'],
-            [
-                'name' => 'Abuja Branch',
-                'address' => '45 Central Area',
-                'city' => 'Abuja',
-                'state' => 'FCT',
-                'country' => 'Nigeria',
-                'phone' => '+2348098765432',
-                'email' => 'abuja@jocrams.test',
-                'contact_person' => 'Regional Manager',
-                'is_active' => true,
-                'sort_order' => 2,
-            ],
-        );
+        // Client request: no Lagos/Abuja branch offices — editorial office only (University of Calabar).
+        Branch::query()
+            ->whereIn('slug', ['lagos-headquarters', 'abuja-branch'])
+            ->update(['is_active' => false]);
     }
 }

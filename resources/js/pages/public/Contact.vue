@@ -1,8 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
-    BuildingOffice2Icon,
     CheckCircleIcon,
     EnvelopeIcon,
     MapPinIcon,
@@ -18,8 +17,38 @@ const form = ref({ name: '', email: '', phone: '', subject: '', message: '' });
 const sent = ref(false);
 const error = ref('');
 const submitting = ref(false);
-const branches = ref([]);
 const { bank, fees, contact, loadOrgInfo } = useOrgInfo();
+
+const DEFAULT_PHONES = [
+    '+234 803 552 5785',
+    '+234 803 314 3777',
+    '+234 803 736 3683',
+    '+234 703 067 3913',
+];
+
+const officeEmail = computed(() => contact.value?.email || 'jocrams2026@gmail.com');
+const officePhones = computed(() => {
+    const phones = contact.value?.phones;
+    return Array.isArray(phones) && phones.length ? phones : DEFAULT_PHONES;
+});
+const officeAddress = computed(() => {
+    const address = contact.value?.address || {};
+    const lines = [
+        address.line1,
+        address.line2,
+        address.line3,
+        address.line4,
+    ].filter(Boolean);
+
+    return lines.length
+        ? lines
+        : [
+            'Room 1, Department of Mass Communication',
+            'Faculty of Communication and Media Studies',
+            'University of Calabar',
+            'Calabar, Nigeria',
+        ];
+});
 
 async function submit() {
     error.value = '';
@@ -36,21 +65,13 @@ async function submit() {
     }
 }
 
-onMounted(async () => {
-    await loadOrgInfo();
-
-    try {
-        const { data } = await publicApi().get('/branches');
-        branches.value = data.data.slice(0, 2);
-    } catch {
-        branches.value = [];
-    }
+onMounted(() => {
+    loadOrgInfo();
 });
 </script>
 
 <template>
     <div>
-        <!-- Page header -->
         <section class="border-b border-slate-200/80 bg-gradient-to-br from-surface-muted via-white to-institutional/5">
             <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-16 lg:px-8">
                 <div class="max-w-2xl">
@@ -59,17 +80,15 @@ onMounted(async () => {
                         Contact Us
                     </h1>
                     <p class="mt-4 text-lg leading-relaxed text-text-secondary">
-                        Send us a message and our team will respond as soon as possible. We're here to help with membership, events, and general inquiries.
+                        Reach the JOCRAMS editorial office for membership, submissions, and general inquiries.
                     </p>
                 </div>
             </div>
         </section>
 
-        <!-- Content -->
         <section class="section-padding bg-white">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="grid gap-10 lg:grid-cols-5 lg:gap-14">
-                    <!-- Form -->
                     <div class="lg:col-span-3">
                         <div v-if="sent" class="card-modern p-10 text-center sm:p-12">
                             <div class="mx-auto flex size-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
@@ -93,7 +112,7 @@ onMounted(async () => {
                             </div>
 
                             <div class="mt-8 grid gap-5 sm:grid-cols-2">
-                                <div class="sm:col-span-1">
+                                <div>
                                     <label class="label" for="contact-name">Name *</label>
                                     <input
                                         id="contact-name"
@@ -104,7 +123,7 @@ onMounted(async () => {
                                         placeholder="Your full name"
                                     />
                                 </div>
-                                <div class="sm:col-span-1">
+                                <div>
                                     <label class="label" for="contact-email">Email *</label>
                                     <input
                                         id="contact-email"
@@ -116,7 +135,7 @@ onMounted(async () => {
                                         placeholder="you@example.com"
                                     />
                                 </div>
-                                <div class="sm:col-span-1">
+                                <div>
                                     <label class="label" for="contact-phone">Phone</label>
                                     <input
                                         id="contact-phone"
@@ -127,7 +146,7 @@ onMounted(async () => {
                                         placeholder="+234 800 000 0000"
                                     />
                                 </div>
-                                <div class="sm:col-span-1">
+                                <div>
                                     <label class="label" for="contact-subject">Subject *</label>
                                     <input
                                         id="contact-subject"
@@ -161,7 +180,6 @@ onMounted(async () => {
                         </form>
                     </div>
 
-                    <!-- Sidebar -->
                     <aside class="lg:col-span-2">
                         <div class="sticky top-24 space-y-6">
                             <div class="card-modern p-6 sm:p-7">
@@ -169,24 +187,27 @@ onMounted(async () => {
                                 <ul class="mt-5 space-y-4">
                                     <li class="flex gap-3 text-sm text-text-secondary">
                                         <MapPinIcon class="mt-0.5 size-5 shrink-0 text-institutional" aria-hidden="true" />
-                                        <span>Nigeria<br>SICAMA / JOCRAMS</span>
+                                        <span>
+                                            <span v-for="(line, index) in officeAddress" :key="line">
+                                                {{ line }}<br v-if="index < officeAddress.length - 1" />
+                                            </span>
+                                        </span>
                                     </li>
                                     <li class="flex gap-3 text-sm text-text-secondary">
                                         <EnvelopeIcon class="mt-0.5 size-5 shrink-0 text-institutional" aria-hidden="true" />
-                                        <a
-                                            :href="`mailto:${contact?.email || 'jocrams2026@gmail.com'}`"
-                                            class="transition hover:text-institutional"
-                                        >
-                                            {{ contact?.email || 'jocrams2026@gmail.com' }}
+                                        <a :href="`mailto:${officeEmail}`" class="transition hover:text-institutional">
+                                            {{ officeEmail }}
                                         </a>
                                     </li>
                                     <li
-                                        v-for="phone in (contact?.phones || []).slice(0, 2)"
+                                        v-for="phone in officePhones"
                                         :key="phone"
                                         class="flex gap-3 text-sm text-text-secondary"
                                     >
                                         <PhoneIcon class="mt-0.5 size-5 shrink-0 text-institutional" aria-hidden="true" />
-                                        <a :href="`tel:${phone.replace(/\s+/g, '')}`" class="transition hover:text-institutional">{{ phone }}</a>
+                                        <a :href="`tel:${phone.replace(/\s+/g, '')}`" class="transition hover:text-institutional">
+                                            {{ phone }}
+                                        </a>
                                     </li>
                                 </ul>
                             </div>
@@ -196,31 +217,8 @@ onMounted(async () => {
                                 :fees="fees"
                                 show-fees
                                 title="Pay to UBA account"
-                                description="Membership and journal fees are paid by bank transfer for now. Admin will approve after you send evidence."
+                                description="Membership and journal fees are paid by bank transfer. Upload your receipt in the app or email evidence to jocrams2026@gmail.com."
                             />
-
-                            <div v-if="branches.length > 0" class="card-modern p-6 sm:p-7">
-                                <h2 class="font-display text-lg font-bold text-institutional-dark">Branch offices</h2>
-                                <ul class="mt-5 space-y-4">
-                                    <li
-                                        v-for="branch in branches"
-                                        :key="branch.uuid"
-                                        class="rounded-xl border border-slate-100 bg-surface-muted/50 p-4"
-                                    >
-                                        <p class="flex items-center gap-2 font-semibold text-institutional-dark">
-                                            <BuildingOffice2Icon class="size-4 text-institutional" aria-hidden="true" />
-                                            {{ branch.name }}
-                                        </p>
-                                        <p class="mt-1 text-sm text-text-secondary">
-                                            {{ branch.city }}, {{ branch.state }}
-                                        </p>
-                                        <p v-if="branch.email" class="mt-2 text-sm text-institutional">{{ branch.email }}</p>
-                                    </li>
-                                </ul>
-                                <RouterLink to="/branches" class="link-arrow mt-5 inline-flex text-sm">
-                                    View all branches
-                                </RouterLink>
-                            </div>
 
                             <div class="rounded-2xl bg-gradient-to-br from-institutional to-institutional-dark p-6 text-white sm:p-7">
                                 <h2 class="font-display text-lg font-bold">Become a member</h2>

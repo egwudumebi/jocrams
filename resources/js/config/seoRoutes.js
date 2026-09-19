@@ -19,7 +19,7 @@ function brandingDefaults(branding = {}) {
         parentOrg,
         origin,
         image: branding.site_logo_url || '/images/sicama-logo.png',
-        description: `${siteName} is the official platform for ${journalName}, published under ${parentOrg}. Explore membership, events, research publications, and manuscript submissions.`,
+        description: `${journalName} (${siteName}) — the official peer-reviewed journal of ${parentOrg}. Advancing Communication and Media Scholarship for the Good of Society.`,
     };
 }
 

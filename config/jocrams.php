@@ -5,6 +5,12 @@ return [
     'motto' => 'Advancing Communication and Media Scholarship for the Good of Society',
     'email' => 'jocrams2026@gmail.com',
     'website' => 'https://jocrams.com',
+    'address' => [
+        'line1' => 'Room 1, Department of Mass Communication',
+        'line2' => 'Faculty of Communication and Media Studies',
+        'line3' => 'University of Calabar',
+        'line4' => 'Calabar, Nigeria',
+    ],
     'phones' => [
         '+234 803 552 5785',
         '+234 803 314 3777',

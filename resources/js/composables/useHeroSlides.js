@@ -25,19 +25,23 @@ export function buildDefaultHeroSlides(branding = {}) {
     const siteName = branding.site_name || 'JOCRAMS';
     const journalName = branding.journal_full_name || branding.site_tagline || 'Journal of Communication Research and Media Studies';
     const parentOrg = branding.parent_org?.short_name || 'SICAMA';
+    const motto = branding.parent_org?.motto
+        || 'Advancing Communication and Media Scholarship for the Good of Society';
+
     return [
         {
             id: 'welcome',
             theme: 'light',
-            eyebrow: 'Enterprise Association Platform',
-            title: 'Building Stronger',
-            highlight: 'Connections',
-            suffix: '. Advancing Our Profession.',
-            description: `The official digital home of ${siteName} and ${parentOrg}. Membership, events, and scholarly publishing in one place.`,
-            ctaLabel: 'Become a Member',
-            ctaTo: '/member/register',
-            secondaryCtaLabel: 'Explore Publications',
-            secondaryCtaTo: '/downloads',
+            eyebrow: siteName,
+            title: 'Advancing Communication and Media Scholarship',
+            highlight: null,
+            suffix: null,
+            compactTitle: true,
+            description: `${journalName} — the official peer-reviewed journal of ${parentOrg}. ${motto}`,
+            ctaLabel: 'Explore JOCRAMS',
+            ctaTo: '/journal',
+            secondaryCtaLabel: 'Become a Member',
+            secondaryCtaTo: '/member/register',
             imageUrl: IMAGES.welcome,
             imagePosition: 'right center',
             accent: 'gold',
@@ -53,8 +57,8 @@ export function buildDefaultHeroSlides(branding = {}) {
             description: `Browse published articles, meet the editorial board, and discover open calls for papers from ${siteName}.`,
             ctaLabel: 'Browse Journal',
             ctaTo: '/journal',
-            secondaryCtaLabel: 'Editorial Board',
-            secondaryCtaTo: '/journal/editorial-board',
+            secondaryCtaLabel: 'Author Guidelines',
+            secondaryCtaTo: '/journal/author-guidelines',
             imageUrl: IMAGES.journal,
             imagePosition: 'center',
             accent: 'gold',
@@ -120,7 +124,6 @@ export function buildCfpHeroSlides(calls = []) {
 
 /**
  * @param {object} options
- * @param {Array<object>} [options.events]
  * @param {Array<object>} [options.calls]
  * @param {object} [options.branding]
  * @returns {Array<object>}
@@ -133,6 +136,5 @@ export function resolveHeroSlides({ calls = [], branding = {} } = {}) {
         return defaults;
     }
 
-    // Welcome first, open CFP promos, then the remaining branded slides.
     return [defaults[0], ...dynamic, ...defaults.slice(1)].slice(0, 6);
 }

@@ -27,7 +27,7 @@
         ];
     }
 
-    $siteDescription = trim($siteTagline.' Published by '.$parentOrgName.'. Explore membership, events, research publications, and manuscript submissions.');
+    $siteDescription = trim($siteTagline.' — the official peer-reviewed journal of '.$parentOrgName.'. Advancing Communication and Media Scholarship for the Good of Society.');
     $canonicalUrl = url()->current();
     $logoDimensions = StructuredData::logoDimensions($siteLogo);
     $structuredData = StructuredData::graph($seoBranding, url('/'), $siteDescription);

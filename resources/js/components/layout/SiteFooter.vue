@@ -109,7 +109,16 @@ onMounted(() => {
                 <div>
                     <h3 class="label-caps !text-slate-300">Contact & Payments</h3>
                     <ul class="mt-4 space-y-2.5 text-sm">
-                        <li>Nigeria</li>
+                        <li>
+                            <template v-if="contact?.address?.line1">
+                                {{ contact.address.line1 }}<br />
+                                <span v-if="contact.address.line3">{{ contact.address.line3 }}</span>
+                            </template>
+                            <template v-else>
+                                Room 1, Department of Mass Communication<br />
+                                University of Calabar
+                            </template>
+                        </li>
                         <li>
                             <a
                                 :href="`mailto:${contact?.email || 'jocrams2026@gmail.com'}`"
@@ -118,14 +127,16 @@ onMounted(() => {
                                 {{ contact?.email || 'jocrams2026@gmail.com' }}
                             </a>
                         </li>
+                        <li v-for="phone in (contact?.phones || []).slice(0, 4)" :key="phone">
+                            <a :href="`tel:${phone.replace(/\s+/g, '')}`" class="transition hover:text-white">
+                                {{ phone }}
+                            </a>
+                        </li>
                         <li v-if="bank?.account_number" class="text-slate-500">
                             UBA · {{ bank.account_number }}
                         </li>
                         <li>
                             <RouterLink to="/contact" class="transition hover:text-white">Send a message →</RouterLink>
-                        </li>
-                        <li>
-                            <RouterLink to="/journal/editorial-board" class="transition hover:text-white">Editorial team →</RouterLink>
                         </li>
                     </ul>
                 </div>

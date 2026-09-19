@@ -53,6 +53,7 @@ class OrgPaymentDetails
                 'email' => config('jocrams.email'),
                 'phones' => config('jocrams.phones', []),
                 'website' => config('jocrams.website'),
+                'address' => config('jocrams.address', []),
             ],
             'payment_mode' => 'bank_transfer',
             'payment_mode_label' => 'Direct bank transfer (admin approval)',

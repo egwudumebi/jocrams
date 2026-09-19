@@ -12,6 +12,7 @@ import AdminPageIntro from '../../components/admin/AdminPageIntro.vue';
 import AdminPanel from '../../components/admin/AdminPanel.vue';
 import { useAuth } from '../../composables/useAuth';
 import { extractApiError } from '../../utils/apiError';
+import { confirmAction, notifyError, notifySuccess, promptText } from '../../utils/swal';
 
 const { getAdminClient } = useAuth();
 
@@ -115,7 +116,15 @@ async function downloadReceipt(proof) {
 }
 
 async function approve(proof) {
-    if (!window.confirm(`Approve receipt from ${proof.user?.name || 'member'} for ${proof.currency} ${Number(proof.amount).toLocaleString()}?`)) {
+    const confirmed = await confirmAction({
+        title: 'Approve receipt?',
+        text: `Approve receipt from ${proof.user?.name || 'member'} for ${proof.currency} ${Number(proof.amount).toLocaleString()}?`,
+        confirmText: 'Approve',
+        cancelText: 'Cancel',
+        tone: 'primary',
+    });
+
+    if (! confirmed) {
         return;
     }
 
@@ -126,17 +135,29 @@ async function approve(proof) {
     try {
         const { data } = await getAdminClient().post(`/payment-proofs/${proof.uuid}/approve`);
         message.value = data.message || 'Receipt approved and payment recorded.';
+        await notifySuccess('Receipt approved', message.value);
         await load();
     } catch (e) {
-        error.value = extractApiError(e, 'Unable to approve receipt.');
+        const msg = extractApiError(e, 'Unable to approve receipt.');
+        error.value = msg;
+        await notifyError('Approval failed', msg);
     } finally {
         actingUuid.value = '';
     }
 }
 
 async function reject(proof) {
-    const reason = window.prompt('Rejection reason (required):');
-    if (!reason?.trim()) {
+    const reason = await promptText({
+        title: 'Reject receipt?',
+        text: `Provide a reason for rejecting ${proof.user?.name || 'this member'}'s receipt.`,
+        inputLabel: 'Rejection reason',
+        inputPlaceholder: 'Explain why this receipt is being rejected…',
+        confirmText: 'Reject',
+        cancelText: 'Cancel',
+        tone: 'danger',
+    });
+
+    if (! reason) {
         return;
     }
 
@@ -146,12 +167,15 @@ async function reject(proof) {
 
     try {
         const { data } = await getAdminClient().post(`/payment-proofs/${proof.uuid}/reject`, {
-            reason: reason.trim(),
+            reason,
         });
         message.value = data.message || 'Receipt rejected.';
+        await notifySuccess('Receipt rejected', message.value);
         await load();
     } catch (e) {
-        error.value = extractApiError(e, 'Unable to reject receipt.');
+        const msg = extractApiError(e, 'Unable to reject receipt.');
+        error.value = msg;
+        await notifyError('Rejection failed', msg);
     } finally {
         actingUuid.value = '';
     }

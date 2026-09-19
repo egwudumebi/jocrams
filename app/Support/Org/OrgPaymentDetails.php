@@ -6,6 +6,27 @@ use App\Models\SystemSetting;
 
 class OrgPaymentDetails
 {
+    /** @var list<string> */
+    private const PLACEHOLDER_ACCOUNT_NUMBERS = [
+        '1234567890',
+        '1234667890',
+        '0000000000',
+    ];
+
+    /** @var list<string> */
+    private const PLACEHOLDER_BANK_NAMES = [
+        'first bank nigeria',
+        'first bank',
+        'placeholder bank',
+    ];
+
+    /** @var list<string> */
+    private const PLACEHOLDER_ACCOUNT_NAMES = [
+        'jocrams association',
+        'association account',
+        'placeholder',
+    ];
+
     /** @return array<string, mixed> */
     public static function publicPayload(): array
     {
@@ -14,9 +35,9 @@ class OrgPaymentDetails
 
         return [
             'bank' => [
-                'bank_name' => self::setting('bank_name') ?: ($bank['bank_name'] ?? null),
-                'account_name' => self::setting('account_name') ?: ($bank['account_name'] ?? null),
-                'account_number' => self::setting('account_number') ?: ($bank['account_number'] ?? null),
+                'bank_name' => self::resolvedBankField('bank_name', $bank['bank_name'] ?? null),
+                'account_name' => self::resolvedBankField('account_name', $bank['account_name'] ?? null),
+                'account_number' => self::resolvedBankField('account_number', $bank['account_number'] ?? null),
                 'evidence_email' => $bank['evidence_email'] ?? config('jocrams.email'),
                 'payment_contacts' => $bank['payment_contacts'] ?? [],
             ],
@@ -36,6 +57,37 @@ class OrgPaymentDetails
             'payment_mode' => 'bank_transfer',
             'payment_mode_label' => 'Direct bank transfer (admin approval)',
         ];
+    }
+
+    /**
+     * Prefer admin settings when present, but never expose known placeholder bank details.
+     */
+    private static function resolvedBankField(string $key, ?string $fallback): ?string
+    {
+        $fromSettings = self::setting($key);
+        $candidate = $fromSettings ?: $fallback;
+
+        if ($candidate === null || $candidate === '') {
+            return $fallback;
+        }
+
+        if (self::isPlaceholderBankValue($key, $candidate)) {
+            return $fallback;
+        }
+
+        return $candidate;
+    }
+
+    private static function isPlaceholderBankValue(string $key, string $value): bool
+    {
+        $normalized = strtolower(trim($value));
+
+        return match ($key) {
+            'account_number' => in_array(preg_replace('/\D+/', '', $value) ?? '', self::PLACEHOLDER_ACCOUNT_NUMBERS, true),
+            'bank_name' => in_array($normalized, self::PLACEHOLDER_BANK_NAMES, true),
+            'account_name' => in_array($normalized, self::PLACEHOLDER_ACCOUNT_NAMES, true),
+            default => false,
+        };
     }
 
     private static function setting(string $key): ?string

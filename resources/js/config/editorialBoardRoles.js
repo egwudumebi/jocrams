@@ -1,6 +1,8 @@
 /** Keep in sync with App\Enums\EditorialBoardRole */
 export const editorialBoardRoles = [
+    'Chairman, Board of Trustees',
     'Editor-in-Chief',
+    'Editorial Adviser',
     'Deputy Editor',
     'Managing Editor',
     'Executive Editor',
@@ -16,6 +18,7 @@ export const editorialBoardRoles = [
     'Statistical Advisor',
     'Ethics Advisor',
     'Peer Review Editor',
+    'Review Editor',
     'Publications Manager',
     'Production Editor',
 ];

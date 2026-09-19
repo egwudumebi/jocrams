@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             ContentSeeder::class,
             SettingsSeeder::class,
             SicamaSeeder::class,
+            JocramsEditorialBoardSeeder::class,
             FeeCatalogSeeder::class,
         ]);
     }

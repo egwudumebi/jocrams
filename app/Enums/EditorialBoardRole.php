@@ -4,7 +4,9 @@ namespace App\Enums;
 
 enum EditorialBoardRole: string
 {
+    case ChairmanBoardOfTrustees = 'Chairman, Board of Trustees';
     case EditorInChief = 'Editor-in-Chief';
+    case EditorialAdviser = 'Editorial Adviser';
     case DeputyEditor = 'Deputy Editor';
     case ManagingEditor = 'Managing Editor';
     case ExecutiveEditor = 'Executive Editor';
@@ -20,6 +22,7 @@ enum EditorialBoardRole: string
     case StatisticalAdvisor = 'Statistical Advisor';
     case EthicsAdvisor = 'Ethics Advisor';
     case PeerReviewEditor = 'Peer Review Editor';
+    case ReviewEditor = 'Review Editor';
     case PublicationsManager = 'Publications Manager';
     case ProductionEditor = 'Production Editor';
 

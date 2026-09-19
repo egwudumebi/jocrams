@@ -16,6 +16,7 @@ import AdminEmptyState from '../../components/admin/AdminEmptyState.vue';
 import AdminPageIntro from '../../components/admin/AdminPageIntro.vue';
 import { useAuth } from '../../composables/useAuth';
 import { extractApiError } from '../../utils/apiError';
+import { confirmAction, notifyError, notifySuccess } from '../../utils/swal';
 
 const { getAdminClient } = useAuth();
 
@@ -129,7 +130,15 @@ async function approve(item) {
         return;
     }
 
-    if (! window.confirm(`Approve membership for ${app.applicant_name}?`)) {
+    const confirmed = await confirmAction({
+        title: 'Approve membership?',
+        text: `Approve membership for ${app.applicant_name}?`,
+        confirmText: 'Approve',
+        cancelText: 'Cancel',
+        tone: 'primary',
+    });
+
+    if (! confirmed) {
         return;
     }
 
@@ -141,12 +150,15 @@ async function approve(item) {
             notes: 'Approved via admin panel',
         });
         message.value = `${app.applicant_name} approved.`;
+        await notifySuccess('Membership approved', `${app.applicant_name} is now an active member.`);
         if (selected.value?.uuid === item.uuid) {
             closeDetail();
         }
         await load();
     } catch (e) {
-        error.value = extractApiError(e, 'Unable to approve application.');
+        const msg = extractApiError(e, 'Unable to approve application.');
+        error.value = msg;
+        await notifyError('Approval failed', msg);
     } finally {
         actingUuid.value = '';
     }
@@ -164,6 +176,18 @@ async function confirmReject() {
         return;
     }
 
+    const confirmed = await confirmAction({
+        title: 'Reject application?',
+        text: `Reject ${app.applicant_name}'s membership application?`,
+        confirmText: 'Reject',
+        cancelText: 'Keep reviewing',
+        tone: 'danger',
+    });
+
+    if (! confirmed) {
+        return;
+    }
+
     actingUuid.value = selected.value.uuid;
     error.value = '';
 
@@ -172,10 +196,13 @@ async function confirmReject() {
             reason: rejectReason.value.trim(),
         });
         message.value = `${app.applicant_name} rejected.`;
+        await notifySuccess('Application rejected', `${app.applicant_name} has been notified.`);
         closeDetail();
         await load();
     } catch (e) {
-        error.value = extractApiError(e, 'Unable to reject application.');
+        const msg = extractApiError(e, 'Unable to reject application.');
+        error.value = msg;
+        await notifyError('Rejection failed', msg);
     } finally {
         actingUuid.value = '';
     }

@@ -8,6 +8,7 @@ use App\Models\MembershipApplication;
 use App\Services\Membership\MembershipApplicationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ApprovalController extends Controller
 {
@@ -17,11 +18,53 @@ class ApprovalController extends Controller
     {
         $approvals = Approval::query()
             ->where('status', 'pending')
-            ->with(['approvable', 'submitter'])
+            ->where('approvable_type', MembershipApplication::class)
+            ->with([
+                'submitter',
+                'approvable.tier',
+                'approvable.documents.mediaFile',
+                'approvable.user',
+            ])
             ->latest()
             ->paginate(20);
 
+        $approvals->getCollection()->transform(function (Approval $approval) {
+            $application = $approval->approvable;
+
+            return [
+                'uuid' => $approval->uuid,
+                'type' => $approval->type,
+                'status' => $approval->status instanceof \BackedEnum
+                    ? $approval->status->value
+                    : $approval->status,
+                'created_at' => $approval->created_at?->toIso8601String(),
+                'submitter' => $approval->submitter ? [
+                    'name' => $approval->submitter->name,
+                    'email' => $approval->submitter->email,
+                ] : null,
+                'application' => $application instanceof MembershipApplication
+                    ? $this->applicationService->presentForAdmin($application)
+                    : null,
+                // Keep legacy key for older clients
+                'approvable' => $application instanceof MembershipApplication
+                    ? $this->applicationService->presentForAdmin($application)
+                    : $application,
+            ];
+        });
+
         return response()->json($approvals);
+    }
+
+    public function show(MembershipApplication $application): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->applicationService->presentForAdmin($application),
+        ]);
+    }
+
+    public function downloadDocument(MembershipApplication $application, int $document): StreamedResponse
+    {
+        return $this->applicationService->downloadDocument($application, $document);
     }
 
     public function approveMembership(MembershipApplication $application, Request $request): JsonResponse

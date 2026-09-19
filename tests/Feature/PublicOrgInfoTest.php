@@ -24,7 +24,7 @@ class PublicOrgInfoTest extends TestCase
             ->assertJsonPath('data.journal.editor_in_chief_message.signatory_name', 'Professor Patrick Ene Okon')
             ->assertJsonPath('data.payment_mode', 'bank_transfer')
             ->assertJsonPath('data.contact.address.line1', 'Room 1, Department of Mass Communication')
-            ->assertJsonCount('data.contact.phones', 4);
+            ->assertJsonCount(4, 'data.contact.phones');
     }
 
     public function test_placeholder_bank_settings_are_ignored_for_public_org_info(): void

@@ -174,6 +174,73 @@ class MembershipApplicationService
         });
     }
 
+    /** @return array<string, mixed> */
+    public function presentForAdmin(MembershipApplication $application): array
+    {
+        $application->loadMissing(['tier', 'documents.mediaFile', 'user.profile', 'approval', 'reviewer']);
+
+        $form = $application->form_data ?? [];
+
+        return [
+            'uuid' => $application->uuid,
+            'status' => $application->status->value,
+            'applicant_name' => $application->applicant_name,
+            'applicant_email' => $application->applicant_email,
+            'applicant_phone' => $application->applicant_phone,
+            'form_data' => $form,
+            'organization' => $form['organization'] ?? $form['institution'] ?? null,
+            'qualification' => $form['qualification'] ?? null,
+            'years_experience' => $form['years_experience'] ?? null,
+            'submitted_at' => $application->submitted_at?->toIso8601String(),
+            'reviewed_at' => $application->reviewed_at?->toIso8601String(),
+            'notes' => $application->notes,
+            'rejection_reason' => $application->rejection_reason,
+            'created_at' => $application->created_at?->toIso8601String(),
+            'tier' => $application->tier ? [
+                'uuid' => $application->tier->uuid,
+                'name' => $application->tier->name,
+                'annual_dues' => (float) $application->tier->annual_dues,
+                'currency' => $application->tier->currency,
+                'min_documents_required' => $application->tier->min_documents_required,
+            ] : null,
+            'user' => $application->user ? [
+                'uuid' => $application->user->uuid,
+                'name' => $application->user->name,
+                'email' => $application->user->email,
+                'phone' => $application->user->phone,
+            ] : null,
+            'documents' => $application->documents->map(function (MembershipApplicationDocument $document) {
+                $media = $document->mediaFile;
+
+                return [
+                    'id' => $document->id,
+                    'document_type' => $document->document_type,
+                    'status' => $document->status,
+                    'filename' => $media?->original_filename ?: $media?->filename,
+                    'mime_type' => $media?->mime_type,
+                    'size' => $media?->size,
+                    'created_at' => $document->created_at?->toIso8601String(),
+                ];
+            })->values()->all(),
+            'documents_count' => $application->documents->count(),
+        ];
+    }
+
+    public function downloadDocument(MembershipApplication $application, int $documentId): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $document = $application->documents()->with('mediaFile')->findOrFail($documentId);
+        $media = $document->mediaFile;
+
+        if (! $media || ! \Illuminate\Support\Facades\Storage::disk($media->disk)->exists($media->path)) {
+            abort(404, 'Document file not found.');
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk($media->disk)->download(
+            $media->path,
+            $media->original_filename ?: $media->filename,
+        );
+    }
+
     private function activateFromApplication(MembershipApplication $application, ?User $approver): Member
     {
         $user = $application->user ?? User::query()->where('email', $application->applicant_email)->firstOrFail();

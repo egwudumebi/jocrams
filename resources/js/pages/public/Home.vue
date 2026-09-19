@@ -17,7 +17,7 @@ import { ShieldCheckIcon as ShieldCheckSolidIcon } from '@heroicons/vue/24/solid
 import HeroCarousel from '../../components/landing/HeroCarousel.vue';
 import ScrollReveal from '../../components/landing/ScrollReveal.vue';
 import SectionHeading from '../../components/landing/SectionHeading.vue';
-import { publicApi } from '../../api/client';
+import { publicApi, journalApi } from '../../api/client';
 import { useSiteBranding } from '../../composables/useSiteBranding';
 import { resolveHeroSlides } from '../../composables/useHeroSlides';
 import { useOrgInfo } from '../../composables/useOrgInfo';
@@ -29,6 +29,8 @@ const heroSlides = ref(resolveHeroSlides({}));
 const news = ref([]);
 const events = ref([]);
 const downloads = ref([]);
+const editorialBoard = ref([]);
+const featuredBoard = ref([]);
 const loadingNews = ref(true);
 const loadingEvents = ref(true);
 const loadingDownloads = ref(true);
@@ -67,21 +69,25 @@ function formatPublishedDate(dateString) {
 
 onMounted(async () => {
     const api = publicApi();
+    const journalClient = journalApi();
 
     try {
         await Promise.all([loadBranding(), loadOrgInfo()]);
         heroSlides.value = resolveHeroSlides({ branding: branding.value });
 
-        const [newsRes, eventsRes, downloadsRes, callsRes] = await Promise.all([
+        const [newsRes, eventsRes, downloadsRes, callsRes, boardRes] = await Promise.all([
             api.get('/news', { params: { per_page: 3 } }),
             api.get('/events'),
             api.get('/downloads'),
             api.get('/journal/calls/open').catch(() => ({ data: { data: [] } })),
+            journalClient.get('/editorial-board').catch(() => ({ data: { data: [] } })),
         ]);
 
         news.value = newsRes.data.data.slice(0, 3);
         events.value = eventsRes.data.data.slice(0, 3);
         downloads.value = downloadsRes.data.data.slice(0, 4);
+        editorialBoard.value = boardRes.data.data || [];
+        featuredBoard.value = editorialBoard.value.slice(0, 6);
 
         heroSlides.value = resolveHeroSlides({
             calls: callsRes.data.data || [],
@@ -170,8 +176,8 @@ onMounted(async () => {
             </HeroCarousel>
         </section>
 
-        <!-- About JOCRAMS (from official document) -->
-        <section class="relative z-10 section-padding bg-white pb-8 pt-10 sm:pt-12">
+        <!-- About JOCRAMS — primary content for the About front page -->
+        <section id="about" class="relative z-10 border-b border-slate-100 bg-white section-padding pt-12 sm:pt-16">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <ScrollReveal>
                     <div class="max-w-3xl">
@@ -185,34 +191,31 @@ onMounted(async () => {
                     </div>
                 </ScrollReveal>
 
-                <div class="mt-10 grid gap-6 lg:grid-cols-2">
-                    <ScrollReveal>
-                        <div class="space-y-4 rounded-3xl border border-slate-100 bg-surface-muted/40 p-6 sm:p-8">
-                            <p class="text-sm font-semibold uppercase tracking-wide text-institutional">Opening statement</p>
-                            <p
-                                v-for="(paragraph, index) in paragraphs(journal?.opening_statement)"
-                                :key="`open-${index}`"
-                                class="text-sm leading-relaxed text-text-secondary"
-                            >
-                                {{ paragraph }}
-                            </p>
-                        </div>
-                    </ScrollReveal>
-                    <ScrollReveal :delay="80">
-                        <div class="space-y-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
-                            <p class="text-sm font-semibold uppercase tracking-wide text-institutional">About the journal</p>
-                            <p
-                                v-for="(paragraph, index) in paragraphs(journal?.about)"
-                                :key="`about-${index}`"
-                                class="text-sm leading-relaxed text-text-secondary"
-                            >
-                                {{ paragraph }}
-                            </p>
-                        </div>
-                    </ScrollReveal>
-                </div>
+                <ScrollReveal :delay="60">
+                    <div class="mt-10 max-w-3xl space-y-5">
+                        <p
+                            v-for="(paragraph, index) in paragraphs(journal?.opening_statement)"
+                            :key="`open-${index}`"
+                            class="text-base leading-relaxed text-text-secondary"
+                        >
+                            {{ paragraph }}
+                        </p>
+                    </div>
+                </ScrollReveal>
 
-                <div class="mt-8 grid gap-6 md:grid-cols-2">
+                <ScrollReveal :delay="100">
+                    <div class="mt-10 max-w-3xl space-y-5 border-t border-slate-100 pt-10">
+                        <p
+                            v-for="(paragraph, index) in paragraphs(journal?.about)"
+                            :key="`about-${index}`"
+                            class="text-base leading-relaxed text-text-secondary"
+                        >
+                            {{ paragraph }}
+                        </p>
+                    </div>
+                </ScrollReveal>
+
+                <div class="mt-12 grid gap-6 md:grid-cols-2">
                     <ScrollReveal>
                         <div class="rounded-3xl bg-gradient-to-br from-institutional-dark to-institutional p-6 text-white sm:p-8">
                             <h3 class="font-display text-xl font-bold">Our Vision</h3>
@@ -220,7 +223,7 @@ onMounted(async () => {
                         </div>
                     </ScrollReveal>
                     <ScrollReveal :delay="80">
-                        <div class="rounded-3xl border border-institutional/15 bg-white p-6 shadow-sm sm:p-8">
+                        <div class="rounded-3xl border border-institutional/15 bg-surface-muted/40 p-6 sm:p-8">
                             <h3 class="font-display text-xl font-bold text-institutional-dark">Our Mission</h3>
                             <div class="mt-3 space-y-3">
                                 <p
@@ -234,11 +237,81 @@ onMounted(async () => {
                         </div>
                     </ScrollReveal>
                 </div>
+            </div>
+        </section>
 
-                <div class="mt-8 flex flex-wrap gap-3">
-                    <RouterLink to="/journal" class="btn-institutional">Explore the journal</RouterLink>
-                    <RouterLink to="/journal/author-guidelines" class="btn-secondary !rounded-xl">Author guidelines</RouterLink>
-                    <RouterLink to="/sicama" class="btn-secondary !rounded-xl">About SICAMA</RouterLink>
+        <!-- Journal highlights -->
+        <section class="section-padding bg-surface-muted">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <ScrollReveal>
+                    <SectionHeading
+                        eyebrow="The journal"
+                        title="Research focus & publishing"
+                        description="ISSN 3156-2779 · Peer-reviewed scholarship published by SICAMA"
+                        link-to="/journal"
+                        link-label="Open journal hub"
+                    />
+                </ScrollReveal>
+
+                <div class="mt-10 grid gap-8 lg:grid-cols-2">
+                    <ScrollReveal>
+                        <div>
+                            <h3 class="font-display text-lg font-semibold text-institutional-dark">Areas of interest</h3>
+                            <div class="mt-4 flex flex-wrap gap-2">
+                                <span
+                                    v-for="area in (journal?.areas_of_interest || []).slice(0, 12)"
+                                    :key="area"
+                                    class="rounded-full border border-institutional/10 bg-white px-3 py-1.5 text-xs font-medium text-institutional-dark"
+                                >
+                                    {{ area }}
+                                </span>
+                            </div>
+                        </div>
+                    </ScrollReveal>
+                    <ScrollReveal :delay="80">
+                        <div>
+                            <h3 class="font-display text-lg font-semibold text-institutional-dark">What we publish</h3>
+                            <ul class="mt-4 grid gap-2 sm:grid-cols-2">
+                                <li
+                                    v-for="item in journal?.what_we_publish || []"
+                                    :key="item"
+                                    class="flex gap-2 text-sm text-text-secondary"
+                                >
+                                    <span class="mt-1.5 size-1.5 shrink-0 rounded-full bg-accent-gold" />
+                                    {{ item }}
+                                </li>
+                            </ul>
+                            <div class="mt-6 flex flex-wrap gap-3">
+                                <RouterLink to="/journal/author-guidelines" class="btn-institutional text-sm">Author guidelines</RouterLink>
+                                <RouterLink to="/journal/editorial-board" class="btn-secondary !rounded-xl text-sm">Full editorial board</RouterLink>
+                            </div>
+                        </div>
+                    </ScrollReveal>
+                </div>
+            </div>
+        </section>
+
+        <!-- Editorial board preview -->
+        <section v-if="featuredBoard.length" class="section-padding bg-white">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <ScrollReveal>
+                    <SectionHeading
+                        eyebrow="Leadership"
+                        title="Editorial board"
+                        description="Scholars guiding peer review and the academic direction of JOCRAMS"
+                        link-to="/journal/editorial-board"
+                        link-label="View all members"
+                    />
+                </ScrollReveal>
+
+                <div class="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                    <ScrollReveal v-for="(member, index) in featuredBoard" :key="member.uuid" :delay="index * 60">
+                        <div class="h-full rounded-2xl border border-slate-100 bg-surface-muted/30 p-5">
+                            <p class="font-display text-lg font-semibold text-institutional-dark">{{ member.name }}</p>
+                            <p class="mt-1 text-sm font-medium text-institutional">{{ member.role_title }}</p>
+                            <p v-if="member.affiliation" class="mt-2 text-sm text-text-secondary">{{ member.affiliation }}</p>
+                        </div>
+                    </ScrollReveal>
                 </div>
             </div>
         </section>

@@ -368,6 +368,10 @@ Route::prefix('v1')->group(function (): void {
 
             Route::get('approvals', [AdminApprovalController::class, 'index'])
                 ->middleware('permission:members.approve');
+            Route::get('applications/{application}', [AdminApprovalController::class, 'show'])
+                ->middleware('permission:members.approve');
+            Route::get('applications/{application}/documents/{document}/download', [AdminApprovalController::class, 'downloadDocument'])
+                ->middleware('permission:members.approve');
             Route::post('applications/{application}/approve', [AdminApprovalController::class, 'approveMembership'])
                 ->middleware('permission:members.approve');
             Route::post('applications/{application}/reject', [AdminApprovalController::class, 'rejectMembership'])

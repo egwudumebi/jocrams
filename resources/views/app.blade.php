@@ -75,17 +75,8 @@
     <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    <script>
-        window.__APP_SEO__ = {
-            branding: @json($seoBranding),
-            defaults: {
-                title: @json($siteName . ' — ' . $siteTagline),
-                description: @json($siteDescription),
-                image: @json($siteLogo),
-                url: @json($canonicalUrl),
-            },
-        };
-    </script>
+    {{-- JSON payload only (not executable) so production CSP script-src 'self' stays intact --}}
+    @include('partials.app-seo-data')
 </head>
 <body class="font-sans antialiased bg-white text-text-primary">
     <div id="app"></div>

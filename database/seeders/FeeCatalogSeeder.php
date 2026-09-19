@@ -6,7 +6,6 @@ use App\Enums\FeeCatalogCategory;
 use App\Enums\FeeCatalogType;
 use App\Models\FeeCatalogItem;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Str;
 
 class FeeCatalogSeeder extends Seeder
 {
@@ -18,8 +17,8 @@ class FeeCatalogSeeder extends Seeder
                 'code' => 'membership_associate_annual',
                 'category' => FeeCatalogCategory::Membership,
                 'fee_type' => FeeCatalogType::AnnualDues,
-                'amount' => 25000,
-                'description' => 'Annual membership dues for associate members.',
+                'amount' => (float) config('jocrams.fees.membership_registration', 20000),
+                'description' => 'Membership registration / annual dues (client-documented ₦20,000).',
                 'sort_order' => 1,
             ],
             [
@@ -27,8 +26,8 @@ class FeeCatalogSeeder extends Seeder
                 'code' => 'membership_full_annual',
                 'category' => FeeCatalogCategory::Membership,
                 'fee_type' => FeeCatalogType::AnnualDues,
-                'amount' => 50000,
-                'description' => 'Annual membership dues for full members.',
+                'amount' => (float) config('jocrams.fees.membership_registration', 20000),
+                'description' => 'Membership registration / annual dues (client-documented ₦20,000).',
                 'sort_order' => 2,
             ],
             [
@@ -36,8 +35,8 @@ class FeeCatalogSeeder extends Seeder
                 'code' => 'journal_submission_standard',
                 'category' => FeeCatalogCategory::Journal,
                 'fee_type' => FeeCatalogType::Submission,
-                'amount' => 15000,
-                'description' => 'Default fee charged when a manuscript is submitted.',
+                'amount' => (float) config('jocrams.fees.manuscript_review', 10000),
+                'description' => 'Manuscript review fee from JOCRAMS Author Guidelines.',
                 'sort_order' => 1,
             ],
             [
@@ -45,8 +44,8 @@ class FeeCatalogSeeder extends Seeder
                 'code' => 'journal_publication_standard',
                 'category' => FeeCatalogCategory::Journal,
                 'fee_type' => FeeCatalogType::Publication,
-                'amount' => 25000,
-                'description' => 'Fee charged after a manuscript is accepted for publication.',
+                'amount' => (float) config('jocrams.fees.publication', 30000),
+                'description' => 'Publication fee from JOCRAMS Author Guidelines.',
                 'sort_order' => 2,
             ],
             [
@@ -70,10 +69,9 @@ class FeeCatalogSeeder extends Seeder
         ];
 
         foreach ($items as $item) {
-            FeeCatalogItem::query()->firstOrCreate(
+            FeeCatalogItem::query()->updateOrCreate(
                 ['code' => $item['code']],
                 [
-                    'uuid' => (string) Str::uuid(),
                     'name' => $item['name'],
                     'category' => $item['category'],
                     'fee_type' => $item['fee_type'],

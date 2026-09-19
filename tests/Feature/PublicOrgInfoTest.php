@@ -20,6 +20,7 @@ class PublicOrgInfoTest extends TestCase
             ->assertJsonPath('data.bank.bank_name', 'United Bank for Africa (UBA)')
             ->assertJsonPath('data.fees.manuscript_review', 10000)
             ->assertJsonPath('data.journal.issn', '3156-2779')
+            ->assertJsonPath('data.journal.editor_in_chief_message.signatory_name', 'Professor Patrick Ene Okon')
             ->assertJsonPath('data.payment_mode', 'bank_transfer');
     }
 }

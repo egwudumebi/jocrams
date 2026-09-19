@@ -25,6 +25,8 @@ const { journal, loadOrgInfo } = useOrgInfo();
 const areas = computed(() => (journal.value?.areas_of_interest || []).slice(0, 12));
 const publishTypes = computed(() => journal.value?.what_we_publish || []);
 const whyPublish = computed(() => journal.value?.why_publish || []);
+const eicMessage = computed(() => journal.value?.editor_in_chief_message || null);
+const eicParagraphs = computed(() => paragraphs(eicMessage.value?.body));
 
 onMounted(async () => {
     await Promise.all([loadBranding(), loadOrgInfo()]);
@@ -113,7 +115,36 @@ function paragraphs(text) {
             </div>
         </section>
 
-        <section class="section-padding bg-white">
+        <section v-if="eicMessage" class="section-padding bg-white">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <article class="overflow-hidden rounded-3xl border border-institutional/10 bg-gradient-to-br from-surface-muted via-white to-institutional/5 shadow-sm">
+                    <div class="border-b border-institutional/10 bg-institutional-dark px-6 py-5 text-white sm:px-10 sm:py-6">
+                        <p class="label-caps text-accent-gold/90">From the Editor-in-Chief</p>
+                        <h2 class="mt-2 font-display text-2xl font-bold sm:text-3xl">{{ eicMessage.title }}</h2>
+                    </div>
+                    <div class="px-6 py-8 sm:px-10 sm:py-10">
+                        <div class="mx-auto max-w-3xl space-y-4">
+                            <p
+                                v-for="(paragraph, index) in eicParagraphs"
+                                :key="`eic-${index}`"
+                                class="text-base leading-relaxed text-text-secondary"
+                            >
+                                {{ paragraph }}
+                            </p>
+                            <div class="mt-8 border-t border-slate-200 pt-6">
+                                <p class="text-sm text-text-secondary">Sincerely,</p>
+                                <p class="mt-3 font-display text-lg font-bold text-institutional-dark">
+                                    {{ eicMessage.signatory_name }}
+                                </p>
+                                <p class="text-sm font-medium text-institutional">{{ eicMessage.signatory_title }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <section class="section-padding bg-surface-muted">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="max-w-3xl">
                     <p class="label-caps text-institutional">About JOCRAMS</p>
@@ -163,7 +194,7 @@ function paragraphs(text) {
             </div>
         </section>
 
-        <section class="section-padding bg-surface-muted">
+        <section class="section-padding bg-white">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                 <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>

@@ -27,6 +27,7 @@ class OrgInfoController extends Controller
                     'why_publish' => config('jocrams.why_publish'),
                     'author_guidelines' => config('jocrams.author_guidelines'),
                     'editorial_leadership' => config('jocrams.editorial_leadership'),
+                    'editor_in_chief_message' => config('jocrams.editor_in_chief_message'),
                 ],
             ],
         ]);

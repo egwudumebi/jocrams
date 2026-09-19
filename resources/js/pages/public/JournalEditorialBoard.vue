@@ -4,11 +4,15 @@ import { RouterLink } from 'vue-router';
 import { ArrowLeftIcon, UserGroupIcon } from '@heroicons/vue/24/outline';
 import { journalApi } from '../../api/client';
 import { useSiteBranding } from '../../composables/useSiteBranding';
+import { useOrgInfo } from '../../composables/useOrgInfo';
 import { renderRichTextHtml, RICH_TEXT_PROSE_CLASSES } from '../../utils/html';
 
 const { branding, loadBranding } = useSiteBranding();
+const { journal, loadOrgInfo } = useOrgInfo();
 const members = ref([]);
 const loading = ref(true);
+
+const eicMessage = computed(() => journal.value?.editor_in_chief_message || null);
 
 const groupedMembers = computed(() => {
     const groups = new Map();
@@ -39,8 +43,16 @@ function memberInitials(name) {
         .toUpperCase();
 }
 
+function paragraphs(text) {
+    if (!text) {
+        return [];
+    }
+
+    return String(text).split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean);
+}
+
 onMounted(async () => {
-    await loadBranding();
+    await Promise.all([loadBranding(), loadOrgInfo()]);
 
     try {
         const { data } = await journalApi().get('/editorial-board');
@@ -82,6 +94,28 @@ onMounted(async () => {
                         class="h-24 w-auto object-contain lg:h-28"
                     />
                 </div>
+            </div>
+        </section>
+
+        <section v-if="eicMessage" class="border-b border-slate-100 bg-white">
+            <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                <article class="rounded-3xl border border-institutional/10 bg-surface-muted/50 p-6 sm:p-8">
+                    <p class="label-caps text-institutional">From the Editor-in-Chief</p>
+                    <h2 class="mt-2 font-display text-2xl font-bold text-institutional-dark">{{ eicMessage.title }}</h2>
+                    <div class="mt-5 max-w-3xl space-y-3">
+                        <p
+                            v-for="(paragraph, index) in paragraphs(eicMessage.body)"
+                            :key="`eic-${index}`"
+                            class="text-sm leading-relaxed text-text-secondary"
+                        >
+                            {{ paragraph }}
+                        </p>
+                    </div>
+                    <div class="mt-6">
+                        <p class="font-display text-base font-bold text-institutional-dark">{{ eicMessage.signatory_name }}</p>
+                        <p class="text-sm text-institutional">{{ eicMessage.signatory_title }}</p>
+                    </div>
+                </article>
             </div>
         </section>
 

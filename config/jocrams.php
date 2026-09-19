@@ -200,4 +200,19 @@ Through responsible scholarly publishing, JOCRAMS seeks to strengthen the relati
             'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Nigeria',
         ],
     ],
+
+    'editor_in_chief_message' => [
+        'title' => 'Welcome Message from the Editor-in-Chief',
+        'body' => 'On behalf of the Editorial Board, I warmly welcome you to the Journal of Communication Research and Media Studies (JOCRAMS)!
+
+I am pleased to have you here — a space dedicated to rigorous scholarship, critical dialogue, and innovative research in communication, media studies, journalism, public relations, advertising, and digital cultures.
+
+In an era defined by rapid technological change, misinformation, and evolving media landscapes, the need for quality research has never been greater. JOCRAMS is committed to publishing original, peer-reviewed work that not only advances theory but also speaks to real-world issues in Africa and beyond.
+
+Whether you are an author, reviewer, reader, or student, we invite you to be part of this intellectual community. We promise a fair, transparent, and timely review process.
+
+Thank you for visiting us. We look forward to receiving your submission so that, together, we can shape the future of media scholarship.',
+        'signatory_name' => 'Professor Patrick Ene Okon',
+        'signatory_title' => 'Editor-in-Chief',
+    ],
 ];

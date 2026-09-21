@@ -10,10 +10,14 @@ import {
 } from '@heroicons/vue/24/outline';
 import BankTransferCard from '../../components/payments/BankTransferCard.vue';
 import { useOrgInfo } from '../../composables/useOrgInfo';
+import { italicizeJournalTitleHtml } from '../../utils/journalTitle';
 
 const { journal, bank, fees, contact, loadOrgInfo } = useOrgInfo();
 
 const guidelines = computed(() => journal.value?.author_guidelines || null);
+const introHtml = computed(() => italicizeJournalTitleHtml(
+    guidelines.value?.intro || 'Prepare and submit manuscripts to JOCRAMS with confidence.',
+));
 
 onMounted(() => {
     loadOrgInfo();
@@ -32,9 +36,10 @@ onMounted(() => {
                 <h1 class="mt-3 max-w-3xl font-display text-4xl font-bold tracking-tight text-white sm:text-5xl">
                     Author Guidelines
                 </h1>
-                <p class="mt-4 max-w-2xl text-lg leading-relaxed text-slate-200">
-                    {{ guidelines?.intro || 'Prepare and submit manuscripts to JOCRAMS with confidence.' }}
-                </p>
+                <p
+                    class="mt-4 max-w-2xl text-lg leading-relaxed text-slate-200"
+                    v-html="introHtml"
+                />
                 <div class="mt-8 flex flex-wrap gap-3">
                     <RouterLink to="/member/journal/submit" class="btn-gold inline-flex items-center gap-2">
                         Submit manuscript

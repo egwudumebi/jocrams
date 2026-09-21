@@ -6,6 +6,8 @@ import { journalApi } from '../../api/client';
 import { useSiteBranding } from '../../composables/useSiteBranding';
 import { useOrgInfo } from '../../composables/useOrgInfo';
 import { renderRichTextHtml, RICH_TEXT_PROSE_CLASSES } from '../../utils/html';
+import JournalTitle from '../../components/JournalTitle.vue';
+import { italicizeJournalTitleHtml } from '../../utils/journalTitle';
 
 const { branding, loadBranding } = useSiteBranding();
 const { journal, loadOrgInfo } = useOrgInfo();
@@ -13,6 +15,7 @@ const members = ref([]);
 const loading = ref(true);
 
 const eicMessage = computed(() => journal.value?.editor_in_chief_message || null);
+const journalFullName = computed(() => branding.value?.journal_full_name || branding.value?.site_tagline || 'Journal of Communication Research and Media Studies');
 
 const groupedMembers = computed(() => {
     const groups = new Map();
@@ -79,7 +82,7 @@ onMounted(async () => {
                         </h1>
                         <p class="mt-4 text-lg leading-relaxed text-text-secondary">
                             The editorial team guiding peer review, production, and publication for
-                            {{ branding?.journal_full_name || branding?.site_tagline }}.
+                            <JournalTitle :text="journalFullName" />.
                         </p>
                         <p class="mt-3 text-sm text-text-secondary">
                             Published by
@@ -107,9 +110,8 @@ onMounted(async () => {
                             v-for="(paragraph, index) in paragraphs(eicMessage.body)"
                             :key="`eic-${index}`"
                             class="text-sm leading-relaxed text-text-secondary"
-                        >
-                            {{ paragraph }}
-                        </p>
+                            v-html="italicizeJournalTitleHtml(paragraph)"
+                        />
                     </div>
                     <div class="mt-6">
                         <p class="font-display text-base font-bold text-institutional-dark">{{ eicMessage.signatory_name }}</p>

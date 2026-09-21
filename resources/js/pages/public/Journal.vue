@@ -15,6 +15,8 @@ import { useSiteBranding } from '../../composables/useSiteBranding';
 import { useOrgInfo } from '../../composables/useOrgInfo';
 import { formatJournalDate, downloadJournalDocument } from '../../utils/journal';
 import { useAuth } from '../../composables/useAuth';
+import JournalTitle from '../../components/JournalTitle.vue';
+import { italicizeJournalTitleHtml } from '../../utils/journalTitle';
 
 const articles = ref([]);
 const loading = ref(true);
@@ -22,11 +24,12 @@ const { memberToken } = useAuth();
 const { branding, loadBranding } = useSiteBranding();
 const { journal, loadOrgInfo } = useOrgInfo();
 
-const areas = computed(() => (journal.value?.areas_of_interest || []).slice(0, 12));
+const areas = computed(() => journal.value?.areas_of_interest || []);
 const publishTypes = computed(() => journal.value?.what_we_publish || []);
 const whyPublish = computed(() => journal.value?.why_publish || []);
 const eicMessage = computed(() => journal.value?.editor_in_chief_message || null);
 const eicParagraphs = computed(() => paragraphs(eicMessage.value?.body));
+const journalFullName = computed(() => branding.value?.journal_full_name || branding.value?.site_tagline || 'Journal of Communication Research and Media Studies');
 
 onMounted(async () => {
     await Promise.all([loadBranding(), loadOrgInfo()]);
@@ -67,7 +70,7 @@ function paragraphs(text) {
                             {{ branding?.site_name || 'JOCRAMS' }}
                         </h1>
                         <p class="mt-3 text-lg font-medium text-institutional">
-                            {{ branding?.journal_full_name || branding?.site_tagline }}
+                            <JournalTitle :text="journalFullName" />
                         </p>
                         <p v-if="journal?.issn" class="mt-2 font-mono text-sm text-text-secondary">
                             ISSN: {{ journal.issn }}
@@ -128,9 +131,8 @@ function paragraphs(text) {
                                 v-for="(paragraph, index) in eicParagraphs"
                                 :key="`eic-${index}`"
                                 class="text-base leading-relaxed text-text-secondary"
-                            >
-                                {{ paragraph }}
-                            </p>
+                                v-html="italicizeJournalTitleHtml(paragraph)"
+                            />
                             <div class="mt-8 border-t border-slate-200 pt-6">
                                 <p class="text-sm text-text-secondary">Sincerely,</p>
                                 <p class="mt-3 font-display text-lg font-bold text-institutional-dark">
@@ -156,18 +158,16 @@ function paragraphs(text) {
                             v-for="(paragraph, index) in paragraphs(journal?.opening_statement)"
                             :key="`open-${index}`"
                             class="text-sm leading-relaxed text-text-secondary"
-                        >
-                            {{ paragraph }}
-                        </p>
+                            v-html="italicizeJournalTitleHtml(paragraph)"
+                        />
                     </div>
                     <div class="space-y-4 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm sm:p-8">
                         <p
                             v-for="(paragraph, index) in paragraphs(journal?.about)"
                             :key="`about-${index}`"
                             class="text-sm leading-relaxed text-text-secondary"
-                        >
-                            {{ paragraph }}
-                        </p>
+                            v-html="italicizeJournalTitleHtml(paragraph)"
+                        />
                     </div>
                 </div>
 

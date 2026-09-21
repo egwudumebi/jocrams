@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\EditorialBoardMember;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -39,14 +38,6 @@ class SicamaSeeder extends Seeder
             );
         }
 
-        EditorialBoardMember::query()->updateOrCreate(
-            ['name' => 'Dr Anthony Ekpo Bassey', 'role_title' => 'Production Editor'],
-            [
-                'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Calabar-Nigeria.',
-                'bio' => null,
-                'sort_order' => 10,
-                'is_active' => true,
-            ],
-        );
+        // Production Editor listing removed per client instruction (handled in JocramsEditorialBoardSeeder).
     }
 }

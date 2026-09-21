@@ -91,7 +91,12 @@ Through responsible scholarly publishing, JOCRAMS seeks to strengthen the relati
         'Development communication',
         'Health communication',
         'Science and technology communication',
+        'Environmental journalism',
+        'Environmental communication / Communication and the environment',
+        'Religion and communication',
+        'Family communication',
         'International and intercultural communication',
+        'Intergroup and intercultural communication',
         'Media management and economics',
         'Film, television and popular culture',
         'Communication technology',
@@ -214,11 +219,6 @@ Through responsible scholarly publishing, JOCRAMS seeks to strengthen the relati
             'name' => 'Ogunbadejo Samuel Idowu, PhD',
             'affiliation' => 'Nnamdi Azikiwe University, Awka, Nigeria',
         ],
-        [
-            'role' => 'Production Editor',
-            'name' => 'Dr. Anthony Ekpo Bassey',
-            'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Nigeria',
-        ],
     ],
 
     'editor_in_chief_message' => [
@@ -227,11 +227,11 @@ Through responsible scholarly publishing, JOCRAMS seeks to strengthen the relati
 
 I am pleased to have you here — a space dedicated to rigorous scholarship, critical dialogue, and innovative research in communication, media studies, journalism, public relations, advertising, and digital cultures.
 
-In an era defined by rapid technological change, misinformation, and evolving media landscapes, the need for quality research has never been greater. JOCRAMS is committed to publishing original, peer-reviewed work that not only advances theory but also speaks to real-world issues in Africa and beyond.
+In an era defined by rapid technological changes, misinformation, and evolving media landscapes, the need for quality research has never been greater. JOCRAMS is committed to publishing original, peer-reviewed work that not only advances theory but also speaks to real-world issues in the African Continent and beyond.
 
 Whether you are an author, reviewer, reader, or student, we invite you to be part of this intellectual community. We promise a fair, transparent, and timely review process.
 
-Thank you for visiting us. We look forward to receiving your submission so that, together, we can shape the future of media scholarship.',
+Thank you for visiting us. We look forward to receiving your submission so that, together, we can shape the future of our discipline and scholarship.',
         'signatory_name' => 'Professor Patrick Ene Okon',
         'signatory_title' => 'Editor-in-Chief',
     ],

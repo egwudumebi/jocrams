@@ -109,7 +109,7 @@ class JocramsEditorialBoardSeeder extends Seeder
             [
                 'name' => 'Dr. Obioma Ozioko',
                 'role_title' => 'Review Editor',
-                'affiliation' => 'Gregory Okoye University, Enugu, Nigeria',
+                'affiliation' => 'Godfrey Okoye University, Enugu, Nigeria',
                 'sort_order' => 60,
             ],
             [
@@ -127,7 +127,7 @@ class JocramsEditorialBoardSeeder extends Seeder
             [
                 'name' => 'Dr. Edang Yolanda Ekpo Bassey',
                 'role_title' => 'Review Editor',
-                'affiliation' => 'Cross River State University, Calabar, Nigeria',
+                'affiliation' => 'University of Cross River State, Calabar, Nigeria',
                 'sort_order' => 63,
             ],
             [
@@ -135,12 +135,6 @@ class JocramsEditorialBoardSeeder extends Seeder
                 'role_title' => 'Review Editor',
                 'affiliation' => 'Ahmadu Bello University, Zaria, Nigeria',
                 'sort_order' => 64,
-            ],
-            [
-                'name' => 'Dr. Anthony Ekpo Bassey',
-                'role_title' => 'Production Editor',
-                'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Calabar, Nigeria',
-                'sort_order' => 70,
             ],
         ];
 
@@ -159,15 +153,21 @@ class JocramsEditorialBoardSeeder extends Seeder
             );
         }
 
-        // Normalize older seed spelling if present.
+        // Client request: remove Production Editor listing(s).
         EditorialBoardMember::query()
-            ->where('name', 'Dr Anthony Ekpo Bassey')
             ->where('role_title', 'Production Editor')
-            ->update([
-                'name' => 'Dr. Anthony Ekpo Bassey',
-                'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Calabar, Nigeria',
-                'sort_order' => 70,
-                'is_active' => true,
-            ]);
+            ->delete();
+
+        EditorialBoardMember::query()
+            ->where('name', 'Dr. Obioma Ozioko')
+            ->update(['affiliation' => 'Godfrey Okoye University, Enugu, Nigeria']);
+
+        EditorialBoardMember::query()
+            ->where(function ($query): void {
+                $query->where('name', 'like', '%Ndang%Bassey%')
+                    ->orWhere('name', 'Dr. Edang Yolanda Ekpo Bassey')
+                    ->orWhere('name', 'like', '%Edang Yolanda%');
+            })
+            ->update(['affiliation' => 'University of Cross River State, Calabar, Nigeria']);
     }
 }

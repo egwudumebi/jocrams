@@ -3,9 +3,12 @@ import { computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useSiteBranding } from '../../composables/useSiteBranding';
 import { useOrgInfo } from '../../composables/useOrgInfo';
+import JournalTitle from '../../components/JournalTitle.vue';
 
 const { branding, loadBranding } = useSiteBranding();
 const { social, contact, bank, hasSocialLinks, loadOrgInfo } = useOrgInfo();
+
+const journalFullName = computed(() => branding.value?.journal_full_name || branding.value?.site_tagline || 'Journal of Communication Research and Media Studies');
 
 const quickLinks = [
     { to: '/', label: 'About' },
@@ -65,7 +68,7 @@ onMounted(() => {
                         “{{ branding?.parent_org?.motto }}”
                     </p>
                     <p class="mt-3 max-w-xs text-sm leading-relaxed">
-                        {{ branding?.journal_full_name || branding?.site_tagline }}
+                        <JournalTitle :text="journalFullName" />
                     </p>
                     <div v-if="hasSocialLinks" class="mt-5 flex flex-wrap gap-2">
                         <a

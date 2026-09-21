@@ -184,6 +184,7 @@ onMounted(() => {
                         <div class="sticky top-24 space-y-6">
                             <div class="card-modern p-6 sm:p-7">
                                 <h2 class="font-display text-lg font-bold text-institutional-dark">Editorial office</h2>
+                                <p class="mt-1 text-xs text-text-secondary">Contact phones and email for the journal office.</p>
                                 <ul class="mt-5 space-y-4">
                                     <li class="flex gap-3 text-sm text-text-secondary">
                                         <MapPinIcon class="mt-0.5 size-5 shrink-0 text-institutional" aria-hidden="true" />

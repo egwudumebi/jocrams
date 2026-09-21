@@ -21,6 +21,7 @@ import { publicApi, journalApi } from '../../api/client';
 import { useSiteBranding } from '../../composables/useSiteBranding';
 import { resolveHeroSlides } from '../../composables/useHeroSlides';
 import { useOrgInfo } from '../../composables/useOrgInfo';
+import { italicizeJournalTitleHtml } from '../../utils/journalTitle';
 
 const { branding, loadBranding } = useSiteBranding();
 const { journal, loadOrgInfo } = useOrgInfo();
@@ -197,9 +198,8 @@ onMounted(async () => {
                             v-for="(paragraph, index) in paragraphs(journal?.opening_statement)"
                             :key="`open-${index}`"
                             class="text-base leading-relaxed text-text-secondary"
-                        >
-                            {{ paragraph }}
-                        </p>
+                            v-html="italicizeJournalTitleHtml(paragraph)"
+                        />
                     </div>
                 </ScrollReveal>
 
@@ -209,9 +209,8 @@ onMounted(async () => {
                             v-for="(paragraph, index) in paragraphs(journal?.about)"
                             :key="`about-${index}`"
                             class="text-base leading-relaxed text-text-secondary"
-                        >
-                            {{ paragraph }}
-                        </p>
+                            v-html="italicizeJournalTitleHtml(paragraph)"
+                        />
                     </div>
                 </ScrollReveal>
 
@@ -259,7 +258,7 @@ onMounted(async () => {
                             <h3 class="font-display text-lg font-semibold text-institutional-dark">Areas of interest</h3>
                             <div class="mt-4 flex flex-wrap gap-2">
                                 <span
-                                    v-for="area in (journal?.areas_of_interest || []).slice(0, 12)"
+                                    v-for="area in (journal?.areas_of_interest || [])"
                                     :key="area"
                                     class="rounded-full border border-institutional/10 bg-white px-3 py-1.5 text-xs font-medium text-institutional-dark"
                                 >

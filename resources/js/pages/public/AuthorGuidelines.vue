@@ -154,9 +154,10 @@ onMounted(() => {
                     <BankTransferCard
                         :bank="bank"
                         :fees="fees"
+                        :show-bank-account="false"
                         show-fees
-                        title="Publication fees — UBA transfer"
-                        description="Pay manuscript review and publication fees by direct transfer. Attach evidence when you email your manuscript."
+                        title="Publication fees"
+                        description="Pay manuscript review and publication fees as directed by the editorial office. Attach evidence when you email your manuscript to jocrams2026@gmail.com."
                     />
 
                     <div class="card-modern p-6">

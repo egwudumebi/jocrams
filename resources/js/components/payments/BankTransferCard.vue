@@ -22,25 +22,29 @@ const props = defineProps({
     },
     description: {
         type: String,
-        default: 'Transfer directly to the SICAMA UBA account. An administrator will verify and approve your payment.',
+        default: 'Transfer using the payment instructions provided by the editorial office. An administrator will verify and approve your payment.',
     },
     showFees: {
         type: Boolean,
         default: false,
+    },
+    showBankAccount: {
+        type: Boolean,
+        default: true,
     },
 });
 
 const copied = ref('');
 
 const rows = computed(() => {
-    if (!props.bank) {
+    if (!props.bank || !props.showBankAccount) {
         return [];
     }
 
     return [
         { label: 'Bank', value: props.bank.bank_name, mono: false },
         { label: 'Account name', value: props.bank.account_name, mono: false },
-        { label: 'UBA account number', value: props.bank.account_number, mono: true },
+        { label: 'Account number', value: props.bank.account_number, mono: true },
     ].filter((row) => row.value);
 });
 
@@ -87,10 +91,10 @@ function formatFee(amount) {
         </div>
 
         <div class="space-y-4 p-6 sm:p-8">
-            <div class="rounded-2xl border border-institutional/15 bg-institutional/[0.03] p-4 sm:p-5">
+            <div v-if="showBankAccount && rows.length" class="rounded-2xl border border-institutional/15 bg-institutional/[0.03] p-4 sm:p-5">
                 <p class="text-xs font-semibold uppercase tracking-wide text-institutional">Bank account details</p>
                 <p class="mt-1 text-sm text-text-secondary">
-                    Pay only to this UBA account. The account number is not a telephone number.
+                    Pay only to this official SICAMA account.
                 </p>
 
                 <div class="mt-4 space-y-3">

@@ -8,7 +8,6 @@ import {
     PaperAirplaneIcon,
     PhoneIcon,
 } from '@heroicons/vue/24/outline';
-import BankTransferCard from '../../components/payments/BankTransferCard.vue';
 import { publicApi } from '../../api/client';
 import { useOrgInfo } from '../../composables/useOrgInfo';
 import { extractApiError } from '../../utils/apiError';
@@ -17,7 +16,7 @@ const form = ref({ name: '', email: '', phone: '', subject: '', message: '' });
 const sent = ref(false);
 const error = ref('');
 const submitting = ref(false);
-const { bank, fees, contact, loadOrgInfo } = useOrgInfo();
+const { fees, contact, loadOrgInfo } = useOrgInfo();
 
 const DEFAULT_PHONES = [
     '+234 803 552 5785',
@@ -213,18 +212,39 @@ onMounted(() => {
                                 </ul>
                             </div>
 
-                            <BankTransferCard
-                                :bank="bank"
-                                :fees="fees"
-                                show-fees
-                                title="Pay to UBA account"
-                                description="Membership and journal fees are paid by bank transfer. Upload your receipt in the app or email evidence to jocrams2026@gmail.com."
-                            />
+                            <div class="overflow-hidden rounded-3xl border border-institutional/15 bg-white shadow-sm">
+                                <div class="bg-gradient-to-r from-institutional-dark via-institutional to-[#0c4a8c] px-6 py-5 text-white sm:px-7">
+                                    <p class="label-caps text-accent-gold/90">Contact & payments</p>
+                                    <h2 class="mt-1 font-display text-lg font-bold">Membership & journal fees</h2>
+                                    <p class="mt-2 text-sm leading-relaxed text-slate-200">
+                                        For payment instructions, email
+                                        <a :href="`mailto:${officeEmail}`" class="font-semibold text-accent-gold underline">{{ officeEmail }}</a>
+                                        or use the contact form. Bank account details are not published on this page.
+                                    </p>
+                                </div>
+                                <div class="grid gap-3 p-6 sm:grid-cols-2 sm:p-7">
+                                    <div class="rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-amber-800">Membership registration</p>
+                                        <p class="mt-1 font-display text-2xl font-bold text-institutional-dark">
+                                            ₦{{ Number(fees?.membership_registration || 20000).toLocaleString() }}
+                                        </p>
+                                    </div>
+                                    <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+                                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Manuscript review</p>
+                                        <p class="mt-1 font-display text-2xl font-bold text-institutional-dark">
+                                            ₦{{ Number(fees?.manuscript_review || 10000).toLocaleString() }}
+                                        </p>
+                                        <p class="mt-1 text-xs text-slate-500">
+                                            Publication ₦{{ Number(fees?.publication || 30000).toLocaleString() }} on acceptance
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="rounded-2xl bg-gradient-to-br from-institutional to-institutional-dark p-6 text-white sm:p-7">
                                 <h2 class="font-display text-lg font-bold">Become a member</h2>
                                 <p class="mt-2 text-sm leading-relaxed text-slate-200">
-                                    Register, pay the membership fee by transfer, and unlock the member portal after admin approval.
+                                    Register, complete payment as directed by the editorial office, and unlock the member portal after admin approval.
                                 </p>
                                 <RouterLink to="/member/register" class="btn-gold mt-5 inline-flex text-sm">
                                     Join Us Today

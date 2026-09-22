@@ -135,9 +135,6 @@ onMounted(() => {
                                 {{ phone }}
                             </a>
                         </li>
-                        <li v-if="bank?.account_number" class="text-slate-500">
-                            UBA · {{ bank.account_number }}
-                        </li>
                         <li>
                             <RouterLink to="/contact" class="transition hover:text-white">Send a message →</RouterLink>
                         </li>

@@ -219,6 +219,11 @@ Through responsible scholarly publishing, JOCRAMS seeks to strengthen the relati
             'name' => 'Ogunbadejo Samuel Idowu, PhD',
             'affiliation' => 'Nnamdi Azikiwe University, Awka, Nigeria',
         ],
+        [
+            'role' => 'Production Editor',
+            'name' => 'Dr. Anthony Ekpo Bassey',
+            'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Calabar, Nigeria',
+        ],
     ],
 
     'editor_in_chief_message' => [

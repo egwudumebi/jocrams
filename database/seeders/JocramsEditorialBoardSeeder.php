@@ -136,6 +136,12 @@ class JocramsEditorialBoardSeeder extends Seeder
                 'affiliation' => 'Ahmadu Bello University, Zaria, Nigeria',
                 'sort_order' => 64,
             ],
+            [
+                'name' => 'Dr. Anthony Ekpo Bassey',
+                'role_title' => 'Production Editor',
+                'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Calabar, Nigeria',
+                'sort_order' => 70,
+            ],
         ];
 
         foreach ($members as $member) {
@@ -153,10 +159,24 @@ class JocramsEditorialBoardSeeder extends Seeder
             );
         }
 
-        // Client request: remove Production Editor listing(s).
+        // Ensure only one Production Editor row (remove duplicates / legacy spellings).
         EditorialBoardMember::query()
             ->where('role_title', 'Production Editor')
+            ->where('name', '!=', 'Dr. Anthony Ekpo Bassey')
             ->delete();
+
+        EditorialBoardMember::query()->updateOrCreate(
+            [
+                'name' => 'Dr. Anthony Ekpo Bassey',
+                'role_title' => 'Production Editor',
+            ],
+            [
+                'affiliation' => 'Department of Mass Communication, Faculty of Communication and Media Studies, University of Calabar, Calabar, Nigeria',
+                'bio' => null,
+                'sort_order' => 70,
+                'is_active' => true,
+            ],
+        );
 
         EditorialBoardMember::query()
             ->where('name', 'Dr. Obioma Ozioko')

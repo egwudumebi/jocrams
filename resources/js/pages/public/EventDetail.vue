@@ -312,7 +312,7 @@ function onMembershipInvalid() {
                                     and upload it from Payments.
                                 </p>
                             </div>
-                            <BankTransferCard :bank="bank" />
+                            <BankTransferCard :bank="bank" :show-bank-account="false" title="Event payment" description="Pay the event fee as directed by the organisers, then email your receipt or sign in to upload it." />
                         </div>
 
                         <div

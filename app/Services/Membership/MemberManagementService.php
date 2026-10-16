@@ -9,7 +9,7 @@ use App\Models\MembershipTier;
 use App\Models\User;
 use App\Notifications\MembershipApprovedNotification;
 use App\Services\Admin\ActivityLogService;
-use App\Services\Credentials\CredentialGenerationService;
+use App\Services\Credentials\MembershipCredentialPackService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -18,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 class MemberManagementService
 {
     public function __construct(
-        private readonly CredentialGenerationService $credentialService,
+        private readonly MembershipCredentialPackService $credentialPack,
         private readonly ActivityLogService $activityLog,
     ) {}
 
@@ -27,6 +27,10 @@ class MemberManagementService
     {
         return DB::transaction(function () use ($data, $admin) {
             $tier = MembershipTier::query()->findOrFail($data['membership_tier_id']);
+            $organization = strtolower((string) ($data['organization'] ?? 'sicama'));
+            if ($organization !== 'sicama') {
+                $organization = 'sicama';
+            }
 
             $existingUser = User::query()->where('email', $data['email'])->first();
             if ($existingUser?->member) {
@@ -57,32 +61,52 @@ class MemberManagementService
                 ]);
             }
 
+            $cardRole = trim((string) ($data['card_role'] ?? ''));
+            if ($cardRole === '') {
+                $cardRole = $organization === 'sicama' ? 'Member' : 'Member';
+            }
+
+            $metadata = [
+                'organization' => $organization,
+                'card_role' => $cardRole,
+                'created_by_admin' => $admin->uuid,
+            ];
+
             $member = Member::query()->create([
                 'user_id' => $user->id,
                 'membership_tier_id' => $tier->id,
-                'membership_number' => $this->generateMembershipNumber(),
+                'membership_number' => $this->generateMembershipNumber($organization),
                 'status' => MemberStatus::Active,
                 'joined_at' => now(),
                 'expires_at' => $data['expires_at'] ?? now()->addYear(),
                 'approved_at' => now(),
                 'approved_by' => $admin->id,
+                'metadata' => $metadata,
             ]);
 
-            $this->credentialService->issueMembershipCard($member);
+            $this->credentialPack->issuePack(
+                $member->fresh(['user.profile', 'tier']),
+                'sicama',
+            );
             $user->notify(new MembershipApprovedNotification($member->fresh('tier')));
 
-            if ($createdUser) {
+            $sendReset = (bool) ($data['send_password_reset'] ?? true);
+            $passwordResetSent = false;
+
+            if ($createdUser && $sendReset) {
                 Password::sendResetLink(['email' => $user->email]);
+                $passwordResetSent = true;
             }
 
             $this->activityLog->log($admin, 'members.add', properties: [
                 'member_uuid' => $member->uuid,
                 'email' => $user->email,
+                'organization' => $organization,
             ]);
 
             return [
                 'member' => $member->fresh(['user', 'tier', 'credentials']),
-                'password_reset_sent' => $createdUser,
+                'password_reset_sent' => $passwordResetSent,
             ];
         });
     }
@@ -127,10 +151,31 @@ class MemberManagementService
         return $member->fresh(['user', 'tier']);
     }
 
-    private function generateMembershipNumber(): string
+    private function generateMembershipNumber(string $organization = 'sicama'): string
     {
+        return $this->generateSicamaMembershipNumber();
+    }
+
+    private function generateSicamaMembershipNumber(): string
+    {
+        $year = (int) now()->format('Y');
+        $nextYearShort = substr((string) ($year + 1), -2);
+        $period = "{$year}-{$nextYearShort}";
+        $prefix = "SICAMA {$period}/";
+
+        $latest = Member::query()
+            ->where('membership_number', 'like', $prefix.'%')
+            ->orderByDesc('membership_number')
+            ->value('membership_number');
+
+        $next = 1;
+        if (is_string($latest) && preg_match('/\/(\d+)$/', $latest, $matches)) {
+            $next = ((int) $matches[1]) + 1;
+        }
+
         do {
-            $number = 'MEM-'.strtoupper(Str::random(8));
+            $number = $prefix.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
+            $next++;
         } while (Member::query()->where('membership_number', $number)->exists());
 
         return $number;

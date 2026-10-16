@@ -59,4 +59,56 @@ class Member extends Model
         return $this->status === MemberStatus::Active
             && ($this->expires_at === null || $this->expires_at->isFuture());
     }
+
+    /**
+     * Application approved but first SICAMA/SEC dues not yet confirmed.
+     * These members can sign in and pay, but must not receive credentials
+     * or appear in the public directory until payment succeeds.
+     */
+    public function isAwaitingMembershipPayment(): bool
+    {
+        return (bool) data_get($this->metadata, 'awaiting_membership_payment', false);
+    }
+
+    /** Paid or admin/imported association member with full membership privileges. */
+    public function hasAssociationMembershipAccess(): bool
+    {
+        return $this->isActive() && ! $this->isAwaitingMembershipPayment();
+    }
+
+    public function isSicamaMember(): bool
+    {
+        $organization = strtolower((string) data_get($this->metadata, 'organization', ''));
+
+        return $organization === 'sicama'
+            || str_starts_with(strtoupper((string) $this->membership_number), 'SICAMA');
+    }
+
+    public function isSecMember(): bool
+    {
+        $organization = strtolower((string) data_get($this->metadata, 'organization', ''));
+
+        return $organization === 'sec'
+            || str_starts_with(strtoupper((string) $this->membership_number), 'SEC ');
+    }
+
+    public function cardRoleTitle(): string
+    {
+        $role = trim((string) data_get($this->metadata, 'card_role', ''));
+
+        return $role !== '' ? $role : 'Member';
+    }
+
+    public function membershipCardTemplateKey(): string
+    {
+        if ($this->isSicamaMember()) {
+            return 'sicama_membership_card';
+        }
+
+        if ($this->isSecMember()) {
+            return 'sec_membership_card';
+        }
+
+        return 'membership_card';
+    }
 }

@@ -75,7 +75,7 @@ class CredentialController extends Controller
     {
         $member = $request->user()->member;
 
-        abort_if(! $member?->isActive(), 403);
+        abort_if(! $member?->hasAssociationMembershipAccess(), 403);
 
         $request->validate(['title' => ['required', 'string', 'max:255']]);
 
@@ -91,7 +91,7 @@ class CredentialController extends Controller
     {
         $member = $request->user()->member;
 
-        abort_if(! $member?->isActive(), 403);
+        abort_if(! $member?->hasAssociationMembershipAccess(), 403);
 
         DigitalCredential::query()
             ->where('member_id', $member->id)
@@ -144,6 +144,8 @@ class CredentialController extends Controller
             'tier' => $member->tier?->name,
             'status' => $member->status->value,
             'expires_at' => $member->expires_at,
+            'organization' => $member->isSicamaMember() ? 'sicama' : 'jocrams',
+            'card_role' => $member->cardRoleTitle(),
             'verify_url' => $credential?->metadata['verify_url'] ?? null,
             'credential_uuid' => $credential?->uuid,
             'download_url' => $downloadUrl,

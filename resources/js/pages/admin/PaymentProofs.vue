@@ -1,9 +1,11 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { onUnmounted, ref, onMounted } from 'vue';
 import {
     ArrowDownTrayIcon,
     CheckCircleIcon,
     DocumentTextIcon,
+    EyeIcon,
+    XMarkIcon,
     XCircleIcon,
 } from '@heroicons/vue/24/outline';
 import AdminAlert from '../../components/admin/AdminAlert.vue';
@@ -19,10 +21,12 @@ const { getAdminClient } = useAuth();
 const proofs = ref([]);
 const loading = ref(true);
 const actingUuid = ref('');
-const downloadingUuid = ref('');
+const previewLoadingUuid = ref('');
 const message = ref('');
 const error = ref('');
 const pendingCount = ref(0);
+
+const preview = ref(null);
 
 const filter = ref({
     status: 'pending',
@@ -31,6 +35,10 @@ const filter = ref({
 });
 
 onMounted(load);
+
+onUnmounted(() => {
+    closePreview();
+});
 
 async function load() {
     loading.value = true;
@@ -87,32 +95,88 @@ function statusClass(status) {
     return map[status] || 'bg-slate-100 text-slate-700';
 }
 
-async function downloadReceipt(proof) {
-    downloadingUuid.value = proof.uuid;
+function guessMime(filename, headerType) {
+    if (headerType && headerType !== 'application/octet-stream') {
+        return headerType;
+    }
+
+    const lower = String(filename || '').toLowerCase();
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.webp')) return 'image/webp';
+    if (lower.endsWith('.gif')) return 'image/gif';
+
+    return headerType || 'application/octet-stream';
+}
+
+function isImageMime(mime) {
+    return String(mime || '').startsWith('image/');
+}
+
+function isPdfMime(mime) {
+    return String(mime || '') === 'application/pdf';
+}
+
+async function fetchReceiptBlob(proof) {
+    const response = await getAdminClient().get(`/payment-proofs/${proof.uuid}/download`, {
+        responseType: 'blob',
+    });
+
+    const disposition = response.headers['content-disposition'] || '';
+    const match = disposition.match(/filename="?([^"]+)"?/i);
+    const filename = match?.[1] || proof.receipt?.filename || `receipt-${proof.uuid}`;
+    const mime = guessMime(filename, response.headers['content-type'] || proof.receipt?.mime_type);
+    const blob = new Blob([response.data], { type: mime });
+
+    return { blob, filename, mime };
+}
+
+function closePreview() {
+    if (preview.value?.url) {
+        window.URL.revokeObjectURL(preview.value.url);
+    }
+    preview.value = null;
+}
+
+async function openReceipt(proof) {
+    previewLoadingUuid.value = proof.uuid;
     error.value = '';
 
     try {
-        const response = await getAdminClient().get(`/payment-proofs/${proof.uuid}/download`, {
-            responseType: 'blob',
-        });
-
-        const disposition = response.headers['content-disposition'] || '';
-        const match = disposition.match(/filename="?([^"]+)"?/i);
-        const filename = match?.[1] || proof.receipt?.filename || `receipt-${proof.uuid}.pdf`;
-        const blob = new Blob([response.data], { type: response.headers['content-type'] || 'application/octet-stream' });
+        closePreview();
+        const { blob, filename, mime } = await fetchReceiptBlob(proof);
         const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.URL.revokeObjectURL(url);
+
+        preview.value = {
+            uuid: proof.uuid,
+            name: proof.user?.name || 'Member',
+            email: proof.user?.email || '',
+            amount: `${proof.currency} ${Number(proof.amount).toLocaleString()}`,
+            purpose: purposeLabel(proof.purpose),
+            filename,
+            mime,
+            url,
+            kind: isImageMime(mime) ? 'image' : (isPdfMime(mime) ? 'pdf' : 'other'),
+        };
     } catch (e) {
-        error.value = extractApiError(e, 'Unable to download receipt.');
+        error.value = extractApiError(e, 'Unable to open receipt.');
     } finally {
-        downloadingUuid.value = '';
+        previewLoadingUuid.value = '';
     }
+}
+
+function downloadPreviewFile() {
+    if (! preview.value?.url) {
+        return;
+    }
+
+    const link = document.createElement('a');
+    link.href = preview.value.url;
+    link.download = preview.value.filename || 'receipt';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 }
 
 async function approve(proof) {
@@ -274,11 +338,11 @@ async function reject(proof) {
                             <button
                                 type="button"
                                 class="btn-secondary inline-flex items-center justify-center gap-1.5 !rounded-xl"
-                                :disabled="downloadingUuid === proof.uuid"
-                                @click="downloadReceipt(proof)"
+                                :disabled="previewLoadingUuid === proof.uuid"
+                                @click="openReceipt(proof)"
                             >
-                                <ArrowDownTrayIcon class="size-4" />
-                                {{ downloadingUuid === proof.uuid ? 'Downloading…' : 'View receipt' }}
+                                <EyeIcon class="size-4" />
+                                {{ previewLoadingUuid === proof.uuid ? 'Opening…' : 'View receipt' }}
                             </button>
                             <template v-if="proof.status === 'pending'">
                                 <button
@@ -305,5 +369,68 @@ async function reject(proof) {
                 </li>
             </ul>
         </AdminPanel>
+
+        <div
+            v-if="preview"
+            class="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 p-3 sm:p-6"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Payment receipt preview"
+            @click.self="closePreview"
+        >
+            <div class="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+                <div class="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5">
+                    <div class="min-w-0">
+                        <p class="truncate font-semibold text-slate-900">{{ preview.name }}</p>
+                        <p class="truncate text-sm text-slate-500">
+                            {{ preview.purpose }} · {{ preview.amount }}
+                            <span v-if="preview.filename"> · {{ preview.filename }}</span>
+                        </p>
+                    </div>
+                    <div class="flex shrink-0 items-center gap-2">
+                        <button
+                            type="button"
+                            class="btn-secondary inline-flex items-center gap-1.5 !rounded-xl !px-3 !py-2 text-sm"
+                            @click="downloadPreviewFile"
+                        >
+                            <ArrowDownTrayIcon class="size-4" />
+                            Download
+                        </button>
+                        <button
+                            type="button"
+                            class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                            aria-label="Close receipt preview"
+                            @click="closePreview"
+                        >
+                            <XMarkIcon class="size-5" />
+                        </button>
+                    </div>
+                </div>
+
+                <div class="min-h-0 flex-1 overflow-auto bg-slate-50 p-3 sm:p-4">
+                    <img
+                        v-if="preview.kind === 'image'"
+                        :src="preview.url"
+                        :alt="`Receipt from ${preview.name}`"
+                        class="mx-auto max-h-[75vh] w-auto max-w-full rounded-lg object-contain shadow-sm"
+                    />
+                    <iframe
+                        v-else-if="preview.kind === 'pdf'"
+                        :src="preview.url"
+                        title="Payment receipt PDF"
+                        class="h-[75vh] w-full rounded-lg border border-slate-200 bg-white"
+                    />
+                    <div v-else class="flex h-[40vh] flex-col items-center justify-center gap-3 text-center">
+                        <DocumentTextIcon class="size-10 text-slate-300" />
+                        <p class="text-sm text-slate-600">
+                            This file type can’t be previewed in the browser.
+                        </p>
+                        <button type="button" class="btn-primary !rounded-xl" @click="downloadPreviewFile">
+                            Download file
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </template>

@@ -17,6 +17,8 @@ const quickLinks = [
     { to: '/events', label: 'Events' },
     { to: '/downloads', label: 'Library' },
     { to: '/journal', label: 'Journal' },
+    { to: '/articles', label: 'Articles' },
+    { to: '/articles/current-issue', label: 'Current Issue' },
     { to: '/journal/author-guidelines', label: 'Author Guidelines' },
     { to: '/contact', label: 'Contact' },
 ];

@@ -31,7 +31,7 @@ class FeeCatalogTest extends TestCase
 
         $this->getJson('/api/v1/journal/admin/fee-catalog')
             ->assertOk()
-            ->assertJsonCount(6, 'data')
+            ->assertJsonCount(5, 'data')
             ->assertJsonStructure([
                 'data' => [
                     ['uuid', 'name', 'category', 'fee_type', 'amount', 'currency', 'is_active'],

@@ -87,6 +87,8 @@ class PaymentReceiptPdfService
             PaymentPurpose::EventFee => 'Event registration fee',
             PaymentPurpose::Certification => 'Certification fee',
             PaymentPurpose::Donation => 'Donation',
+            PaymentPurpose::JournalSubmissionFee => 'Journal review fee',
+            PaymentPurpose::JournalPublicationFee => 'Journal publication fee',
         };
     }
 

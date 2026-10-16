@@ -3,6 +3,7 @@
 namespace App\Services\Journal;
 
 use App\Models\JournalSubmission;
+use App\Models\User;
 use App\Support\Auth\ProfileImageUrl;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -393,18 +394,49 @@ class JournalSubmissionRepository
     /** @return list<array<string, mixed>> */
     public function listReviewers(): array
     {
-        return DB::table('users')
+        // Anyone with the reviewer role, or journal.review / journal.assign permission
+        // (so editors/admins appear even before dedicated reviewers are created).
+        $uuids = DB::table('users')
             ->join('user_role', 'users.id', '=', 'user_role.user_id')
             ->join('roles', 'user_role.role_id', '=', 'roles.id')
-            ->where('roles.slug', 'reviewer')
-            ->select('users.uuid', 'users.name', 'users.email')
-            ->orderBy('users.name')
-            ->get()
-            ->map(fn ($user) => [
-                'id' => (string) $user->uuid,
-                'name' => (string) $user->name,
-                'email' => (string) $user->email,
-            ])
+            ->leftJoin('role_permission', 'roles.id', '=', 'role_permission.role_id')
+            ->leftJoin('permissions', 'role_permission.permission_id', '=', 'permissions.id')
+            ->where(function ($query): void {
+                $query->where('roles.slug', 'reviewer')
+                    ->orWhereIn('permissions.slug', ['journal.review', 'journal.assign']);
+            })
+            ->distinct()
+            ->pluck('users.uuid');
+
+        if ($uuids->isEmpty()) {
+            return [];
+        }
+
+        $assignmentCounts = DB::table('journal_reviewer_assignments')
+            ->select('reviewer_id', DB::raw('count(*) as active_count'))
+            ->whereIn('reviewer_id', $uuids)
+            ->whereIn('status', ['assigned', 'accepted'])
+            ->groupBy('reviewer_id')
+            ->pluck('active_count', 'reviewer_id');
+
+        return User::query()
+            ->whereIn('uuid', $uuids)
+            ->with('roles:id,slug')
+            ->orderBy('name')
+            ->get(['id', 'uuid', 'name', 'email'])
+            ->map(function (User $user) use ($assignmentCounts): array {
+                $hasReviewerRole = $user->roles->contains(fn ($role) => $role->slug === 'reviewer');
+                $activeAssignments = (int) ($assignmentCounts[$user->uuid] ?? 0);
+
+                return [
+                    'id' => (string) $user->uuid,
+                    'name' => (string) $user->name,
+                    'email' => (string) $user->email,
+                    'has_reviewer_role' => $hasReviewerRole,
+                    'can_remove' => $hasReviewerRole,
+                    'active_assignments' => $activeAssignments,
+                ];
+            })
             ->all();
     }
 
@@ -465,6 +497,11 @@ class JournalSubmissionRepository
             'rejection_reason' => $model->rejection_reason ? (string) $model->rejection_reason : null,
             'date_submitted' => $model->created_at,
             'date_reviewed' => $model->reviewed_at,
+            'receipt_acknowledged_at' => $model->receipt_acknowledged_at ?? null,
+            'receipt_acknowledged' => ! empty($model->receipt_acknowledged_at),
+            'can_acknowledge_receipt' => empty($model->receipt_acknowledged_at)
+                && (string) $model->status !== 'payment_pending'
+                && $canManageJournal,
         ];
     }
 
@@ -491,6 +528,8 @@ class JournalSubmissionRepository
             'rejection_reason' => $model->rejection_reason,
             'date_submitted' => $model->created_at,
             'date_reviewed' => $model->reviewed_at,
+            'receipt_acknowledged_at' => $model->receipt_acknowledged_at,
+            'receipt_acknowledged' => $model->receipt_acknowledged_at !== null,
         ];
     }
 

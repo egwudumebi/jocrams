@@ -8,6 +8,7 @@ use App\Models\DigitalCredential;
 use App\Models\MediaFile;
 use App\Models\Member;
 use App\Support\Auth\ProfileImageUrl;
+use App\Support\Credentials\CardAsset;
 use App\Support\Settings\SiteBranding;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
@@ -18,12 +19,28 @@ class CredentialGenerationService
 {
     public function issueMembershipCard(Member $member): DigitalCredential
     {
-        return $this->issue($member, CredentialType::MembershipCard, 'Membership Card', 'membership_card');
+        $templateKey = $member->membershipCardTemplateKey();
+        $title = $member->isSicamaMember() ? 'SICAMA Membership Card' : 'Membership Card';
+
+        return $this->issue($member, CredentialType::MembershipCard, $title, $templateKey);
     }
 
-    public function issueCertificate(Member $member, string $title, string $templateKey = 'certificate'): DigitalCredential
+    public function issueCertificate(Member $member, string $title, ?string $templateKey = null): DigitalCredential
     {
+        $templateKey ??= $member->isSicamaMember()
+            ? 'sicama_certificate'
+            : 'certificate';
+
         return $this->issue($member, CredentialType::Certificate, $title, $templateKey);
+    }
+
+    public function issueWelcomeLetter(Member $member, string $templateKey = 'welcome_letter'): DigitalCredential
+    {
+        $title = $member->isSicamaMember()
+            ? 'SICAMA Official Welcome Letter'
+            : 'Official Welcome Letter';
+
+        return $this->issue($member, CredentialType::WelcomeLetter, $title, $templateKey);
     }
 
     public function issue(Member $member, CredentialType $type, string $title, string $templateKey): DigitalCredential
@@ -34,16 +51,19 @@ class CredentialGenerationService
 
         [$qrImage, $qrMime] = $this->qrCodeDataUri($publicVerifyUrl);
 
-        $pdf = Pdf::loadView('credentials.'.$templateKey, $this->viewData(
-            member: $member->load('user.profile', 'tier'),
-            title: $title,
-            verifyUrl: $verifyUrl,
-            publicVerifyUrl: $publicVerifyUrl,
-            qrImage: $qrImage,
-            qrMime: $qrMime,
-            issuedAt: now(),
-            expiresAt: $member->expires_at,
-        ));
+        $pdf = $this->makePdf(
+            templateKey: $templateKey,
+            viewData: $this->viewData(
+                member: $member->load('user.profile', 'tier'),
+                title: $title,
+                verifyUrl: $verifyUrl,
+                publicVerifyUrl: $publicVerifyUrl,
+                qrImage: $qrImage,
+                qrMime: $qrMime,
+                issuedAt: now(),
+                expiresAt: $member->expires_at,
+            ),
+        );
 
         $filename = Str::uuid().'.pdf';
         $path = "credentials/{$member->uuid}/{$filename}";
@@ -86,16 +106,19 @@ class CredentialGenerationService
 
         [$qrImage, $qrMime] = $this->qrCodeDataUri($publicVerifyUrl);
 
-        return Pdf::loadView('credentials.'.$credential->template_key, $this->viewData(
-            member: $member,
-            title: $credential->title,
-            verifyUrl: $credential->metadata['verify_url'] ?? url("/api/v1/public/verify/{$credential->verification_token}"),
-            publicVerifyUrl: $publicVerifyUrl,
-            qrImage: $qrImage,
-            qrMime: $qrMime,
-            issuedAt: $credential->issued_at ?? now(),
-            expiresAt: $credential->expires_at ?? $member->expires_at,
-        ));
+        return $this->makePdf(
+            templateKey: $credential->template_key,
+            viewData: $this->viewData(
+                member: $member,
+                title: $credential->title,
+                verifyUrl: $credential->metadata['verify_url'] ?? url("/api/v1/public/verify/{$credential->verification_token}"),
+                publicVerifyUrl: $publicVerifyUrl,
+                qrImage: $qrImage,
+                qrMime: $qrMime,
+                issuedAt: $credential->issued_at ?? now(),
+                expiresAt: $credential->expires_at ?? $member->expires_at,
+            ),
+        );
     }
 
     public function downloadResponse(DigitalCredential $credential): \Illuminate\Http\Response
@@ -161,6 +184,12 @@ class CredentialGenerationService
         \DateTimeInterface $issuedAt,
         ?\DateTimeInterface $expiresAt,
     ): array {
+        $logoDataUri = SiteBranding::logoDataUri()
+            ?? CardAsset::publicImageDataUri('images/sicama-logo.png');
+
+        $validUntil = $expiresAt ?? $member->expires_at;
+        $role = $member->cardRoleTitle() ?: 'Member';
+
         return [
             'member' => $member,
             'title' => $title,
@@ -168,12 +197,43 @@ class CredentialGenerationService
             'publicVerifyUrl' => $publicVerifyUrl,
             'qrImage' => $qrImage,
             'qrMime' => $qrMime,
-            'siteName' => SiteBranding::siteName(),
-            'logoDataUri' => SiteBranding::logoDataUri(),
+            'siteName' => $member->isSicamaMember() ? 'SICAMA' : SiteBranding::siteName(),
+            'logoDataUri' => $logoDataUri,
             'profileImageDataUri' => ProfileImageUrl::dataUriForUser($member->user),
             'issuedAt' => $issuedAt,
             'expiresAt' => $expiresAt,
+            'cardRoleTitle' => $role,
+            'certificateRole' => $role,
+            'validUntilLabel' => $validUntil
+                ? CardAsset::ordinalDayMonthYear($validUntil)
+                : 'No expiry date',
+            'certificateDatedLabel' => CardAsset::datedThisDayLabel($issuedAt),
+            'membershipPeriodLabel' => CardAsset::membershipPeriodLabel($issuedAt, $validUntil),
+            'certificateBadgeNumberHtml' => CardAsset::certificateBadgeNumberHtml(
+                (string) $member->membership_number
+            ),
+            'certificateBgDataUri' => CardAsset::publicImageDataUri('images/credentials/sicama-certificate-bg.jpg'),
+            'chairmanSignatureDataUri' => CardAsset::publicImageDataUri('images/signatures/bot-chairman.png'),
+            'presidentSignatureDataUri' => CardAsset::publicImageDataUri('images/signatures/president.png'),
         ];
+    }
+
+    /** @param  array<string, mixed>  $viewData */
+    private function makePdf(string $templateKey, array $viewData): \Barryvdh\DomPDF\PDF
+    {
+        $pdf = Pdf::loadView('credentials.'.$templateKey, $viewData);
+
+        if ($templateKey === 'sicama_membership_card') {
+            // Match the physical SICAMA card PDF page size (pts).
+            $pdf->setPaper([0.0, 0.0, 242.64, 152.52], 'portrait');
+        }
+
+        if ($templateKey === 'sicama_certificate') {
+            // Official SICAMA certificate is landscape letter-like (864×612 pt).
+            $pdf->setPaper([0.0, 0.0, 864.0, 612.0], 'landscape');
+        }
+
+        return $pdf;
     }
 
     /** @return array{0: string, 1: string} */

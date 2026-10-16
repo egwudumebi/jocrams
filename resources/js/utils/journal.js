@@ -15,6 +15,10 @@ export function journalDocumentUrl(item) {
 }
 
 export async function downloadJournalDocument(url, token = null, variant = 'manuscript') {
+    if (! url) {
+        throw new Error('Document URL is unavailable.');
+    }
+
     const headers = { Accept: 'application/octet-stream' };
     if (token) {
         headers.Authorization = `Bearer ${token}`;
@@ -26,7 +30,16 @@ export async function downloadJournalDocument(url, token = null, variant = 'manu
 
     const response = await fetch(downloadUrl, { headers });
     if (! response.ok) {
-        throw new Error('Unable to download document.');
+        let message = 'Unable to download document.';
+        try {
+            const payload = await response.json();
+            if (payload?.message) {
+                message = payload.message;
+            }
+        } catch {
+            // non-JSON error body
+        }
+        throw new Error(message);
     }
 
     const blob = await response.blob();
@@ -36,6 +49,8 @@ export async function downloadJournalDocument(url, token = null, variant = 'manu
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename.includes('.') ? filename : `${filename}.docx`;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(link.href);
 }

@@ -15,7 +15,7 @@ const classes = {
 
 const labels = {
     submitted: 'Submitted',
-    payment_pending: 'Payment pending',
+    payment_pending: 'Payment Pending',
     under_review: 'Under Review',
     revision_requested: 'Revision Requested',
     resubmitted: 'Resubmitted',

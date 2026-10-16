@@ -44,6 +44,17 @@ class JournalSubmissionAccess
         }
     }
 
+    public function assertCanAcknowledgeReceipt(User $user, JournalSubmission $submission): void
+    {
+        if (! $user->canJournalAssign()) {
+            throw new AuthorizationException('You do not have permission to acknowledge submission receipt.');
+        }
+
+        if ($submission->status === JournalSubmissionStatus::PaymentPending) {
+            throw new InvalidArgumentException('Payment must be completed before acknowledging receipt.');
+        }
+    }
+
     public function assertCanReview(User $user, JournalSubmission $submission): void
     {
         if ($user->canJournalAssign()) {

@@ -33,6 +33,8 @@ const error = ref('');
 const hasActiveMembership = computed(() => memberUser.value?.member?.status === 'active');
 const renewal = computed(() => memberUser.value?.member?.renewal ?? null);
 const canRenewMembership = computed(() => renewal.value?.can_renew ?? false);
+const firstPaymentDue = computed(() => Boolean(renewal.value?.first_payment_due || renewal.value?.awaiting_membership_payment));
+const canPayMembershipFee = computed(() => renewal.value?.can_pay_membership_fee ?? (firstPaymentDue.value || canRenewMembership.value));
 const annualDues = computed(() => Number(memberUser.value?.member?.tier?.annual_dues || 0));
 const currency = computed(() => memberUser.value?.member?.tier?.currency || 'NGN');
 const defaultProofAmount = computed(() => {
@@ -40,15 +42,15 @@ const defaultProofAmount = computed(() => {
         return Number(route.query.amount);
     }
 
-    if (route.query.purpose === 'registration') {
-        return Number(fees.value?.membership_registration || 20000);
+    if (route.query.purpose === 'registration' || firstPaymentDue.value) {
+        return Number(fees.value?.membership_registration || 25000);
     }
 
     if (canRenewMembership.value || hasActiveMembership.value) {
-        return annualDues.value || Number(fees.value?.membership_registration || 20000);
+        return annualDues.value || Number(fees.value?.membership_registration || 25000);
     }
 
-    return Number(fees.value?.membership_registration || 20000);
+    return Number(fees.value?.membership_registration || 25000);
 });
 
 const defaultPurpose = computed(() => {
@@ -102,7 +104,11 @@ function formatDate(value) {
 }
 
 function renewalNotice() {
-    if (!renewal.value || canRenewMembership.value) {
+    if (firstPaymentDue.value) {
+        return 'Complete your ₦25,000 SICAMA membership payment to receive your ID card, certificate, and welcome letter.';
+    }
+
+    if (!renewal.value || canRenewMembership.value || canPayMembershipFee.value) {
         return '';
     }
 

@@ -125,6 +125,33 @@ const routeSeoBuilders = {
             type: 'website',
         };
     },
+    articles(route, branding) {
+        const d = brandingDefaults(branding);
+
+        return {
+            title: withSite('Articles', d),
+            description: `Published articles and permanent landing pages from ${d.journalName}.`,
+            type: 'website',
+        };
+    },
+    'articles.current-issue'(route, branding) {
+        const d = brandingDefaults(branding);
+
+        return {
+            title: withSite('Current Issue', d),
+            description: `Current issue of ${d.journalName}.`,
+            type: 'website',
+        };
+    },
+    'articles.show'(route, branding) {
+        const d = brandingDefaults(branding);
+
+        return {
+            title: withSite('Article', d),
+            description: `Article landing page in ${d.journalName}.`,
+            type: 'article',
+        };
+    },
     'journal.editorial-board'(route, branding) {
         const d = brandingDefaults(branding);
 

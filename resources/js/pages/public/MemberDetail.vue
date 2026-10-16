@@ -13,6 +13,7 @@ import {
     TrophyIcon,
 } from '@heroicons/vue/24/outline';
 import { publicApi } from '../../api/client';
+import MembershipIdCard from '../../components/membership/MembershipIdCard.vue';
 
 const route = useRoute();
 const { branding, loadBranding } = useSiteBranding();
@@ -39,6 +40,25 @@ const socialLinks = computed(() => {
     return Object.entries(links)
         .filter(([, url]) => typeof url === 'string' && url.trim() !== '')
         .map(([label, url]) => ({ label, url }));
+});
+
+const logoUrl = computed(() => branding.value?.parent_org?.logo_url || '/images/sicama-logo.png');
+
+const isSicama = computed(() => {
+    if (!member.value) {
+        return false;
+    }
+
+    return member.value.organization === 'sicama'
+        || String(member.value.membership_number || '').startsWith('SICAMA');
+});
+
+const cardVerifyUrl = computed(() => {
+    if (!member.value?.uuid || typeof window === 'undefined') {
+        return '/verify';
+    }
+
+    return `${window.location.origin}/members/${member.value.uuid}`;
 });
 
 function formatJoinedDate(dateString) {
@@ -91,7 +111,7 @@ watch(member, (value) => {
 <template>
     <div>
         <section class="border-b border-slate-200/80 bg-gradient-to-br from-surface-muted via-white to-institutional/5">
-            <div class="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+            <div class="mx-auto max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
                 <RouterLink to="/members" class="inline-flex items-center gap-2 text-sm font-semibold text-institutional transition hover:text-institutional-dark">
                     <ArrowLeftIcon class="size-4" aria-hidden="true" />
                     Back to directory
@@ -123,7 +143,7 @@ watch(member, (value) => {
                         <div class="min-w-0 flex-1 text-white">
                             <p class="label-caps text-white/70">Member profile</p>
                             <h1 class="mt-1 font-display text-3xl font-bold sm:text-4xl">{{ member.name }}</h1>
-                            <p class="mt-2 text-lg text-white/85">{{ member.tier?.name }}</p>
+                            <p class="mt-2 text-lg text-white/85">{{ member.card_role || member.tier?.name }}</p>
                             <p v-if="member.position" class="mt-1 text-sm text-white/75">{{ member.position }}</p>
                         </div>
                     </div>
@@ -132,7 +152,44 @@ watch(member, (value) => {
         </section>
 
         <section v-if="member && !loading" class="section-padding bg-white">
-            <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+            <div class="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+                <!-- ID card — primary visual -->
+                <div class="mb-10">
+                    <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-[0.18em] text-institutional">
+                                {{ isSicama ? 'Official SICAMA ID card' : 'Official membership card' }}
+                            </p>
+                            <h2 class="mt-1 font-display text-2xl font-bold text-institutional-dark">
+                                Digital membership credential
+                            </h2>
+                        </div>
+                        <RouterLink
+                            to="/member/credentials"
+                            class="text-sm font-semibold text-institutional hover:underline"
+                        >
+                            Member login to download PDF →
+                        </RouterLink>
+                    </div>
+
+                    <div
+                        class="flex justify-center rounded-3xl border border-slate-200/80 p-4 sm:p-8"
+                        :class="isSicama
+                            ? 'bg-gradient-to-br from-[#e8f3f7] via-white to-slate-50'
+                            : 'bg-gradient-to-br from-slate-50 via-white to-blue-50'"
+                    >
+                        <MembershipIdCard
+                            :member="member"
+                            :logo-url="logoUrl"
+                            :show-email="false"
+                            :verify-url="cardVerifyUrl"
+                        />
+                    </div>
+                    <p class="mt-3 text-center text-xs text-slate-500">
+                        Click the card to flip between front and back. Download the signed PDF after member login.
+                    </p>
+                </div>
+
                 <div class="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
                     <div class="space-y-6">
                         <article v-if="member.professional_bio" class="card-modern p-6 sm:p-8">
@@ -156,6 +213,13 @@ watch(member, (value) => {
                                     {{ achievement }}
                                 </li>
                             </ul>
+                        </article>
+
+                        <article
+                            v-if="!member.professional_bio && !member.achievements?.length"
+                            class="card-modern p-6 text-sm text-slate-500 sm:p-8"
+                        >
+                            This member has not added a public bio yet.
                         </article>
                     </div>
 

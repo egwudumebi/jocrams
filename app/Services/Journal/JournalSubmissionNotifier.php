@@ -30,6 +30,23 @@ class JournalSubmissionNotifier
         );
     }
 
+    public function notifyReceiptAcknowledged(string $submissionUuid): void
+    {
+        $submission = $this->requireSubmission($submissionUuid);
+        $journalName = (string) config('app.name', 'JOCRAMS');
+
+        $this->queueToAuthor(
+            $submission,
+            event: 'journal.submission.receipt_acknowledged',
+            subject: "{$journalName}: receipt of your manuscript acknowledged",
+            body: $this->greeting($submission)."\n\n"
+                ."This is to formally acknowledge that {$journalName} has received your manuscript "
+                ."\"{$submission->title}\".\n\n"
+                ."Your submission is now in our editorial workflow. We will notify you of the next update.\n\n"
+                ."You can track progress in your journal submissions area.\n",
+        );
+    }
+
     public function notifyReviewerAssigned(string $submissionUuid, string $reviewerId, ?string $dueAt): void
     {
         $submission = $this->requireSubmission($submissionUuid);

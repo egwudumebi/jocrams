@@ -9,9 +9,10 @@ import {
     IdentificationIcon,
     LifebuoyIcon,
     NewspaperIcon,
+    PencilSquareIcon,
     UserCircleIcon,
 } from '@heroicons/vue/24/outline';
-import { memberNavLinks } from '../../config/memberNavigation';
+import { memberNavSections } from '../../config/memberNavigation';
 
 defineProps({
     memberUser: {
@@ -36,6 +37,7 @@ const linkIcons = {
     'member.credentials': IdentificationIcon,
     'member.downloads': ArrowDownTrayIcon,
     'member.journal': DocumentTextIcon,
+    'member.journal.submit': PencilSquareIcon,
     'member.profile': UserCircleIcon,
     'member.support': LifebuoyIcon,
 };
@@ -46,7 +48,11 @@ function isActive(name, path) {
     }
 
     if (name === 'member.journal') {
-        return route.path.startsWith('/member/journal');
+        return route.name === 'member.journal' || route.name === 'member.journal.show';
+    }
+
+    if (name === 'member.journal.submit') {
+        return route.name === name;
     }
 
     return route.name === name || route.path === path || route.path.startsWith(`${path}/`);
@@ -68,18 +74,31 @@ function isActive(name, path) {
             </RouterLink>
         </div>
 
-        <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            <RouterLink
-                v-for="item in memberNavLinks"
-                :key="item.name"
-                :to="item.to"
-                class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition"
-                :class="isActive(item.name, item.to) ? 'bg-institutional text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'"
-                @click="$emit('navigate')"
-            >
-                <component :is="linkIcons[item.name]" class="size-5 shrink-0" />
-                {{ item.label }}
-            </RouterLink>
+        <nav class="flex-1 space-y-5 overflow-y-auto px-3 py-4">
+            <div v-for="section in memberNavSections" :key="section.id">
+                <div v-if="section.label" class="mb-2 px-3">
+                    <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        {{ section.label }}
+                    </p>
+                    <p v-if="section.hint" class="mt-0.5 text-[11px] leading-snug text-slate-400">
+                        {{ section.hint }}
+                    </p>
+                </div>
+
+                <div class="space-y-1">
+                    <RouterLink
+                        v-for="item in section.links"
+                        :key="item.name"
+                        :to="item.to"
+                        class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition"
+                        :class="isActive(item.name, item.to) ? 'bg-institutional text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50'"
+                        @click="$emit('navigate')"
+                    >
+                        <component :is="linkIcons[item.name]" class="size-5 shrink-0" />
+                        {{ item.label }}
+                    </RouterLink>
+                </div>
+            </div>
         </nav>
 
         <div class="border-t border-slate-100 p-4">

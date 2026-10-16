@@ -5,22 +5,17 @@ import {
     ArrowRightIcon,
     BookOpenIcon,
     LightBulbIcon,
-    LockClosedIcon,
     SparklesIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
-import { journalApi } from '../../api/client';
-import JournalStatusBadge from '../../components/journal/JournalStatusBadge.vue';
+import { publicApi } from '../../api/client';
 import { useSiteBranding } from '../../composables/useSiteBranding';
 import { useOrgInfo } from '../../composables/useOrgInfo';
-import { formatJournalDate, downloadJournalDocument } from '../../utils/journal';
-import { useAuth } from '../../composables/useAuth';
 import JournalTitle from '../../components/JournalTitle.vue';
 import { italicizeJournalTitleHtml } from '../../utils/journalTitle';
 
 const articles = ref([]);
 const loading = ref(true);
-const { memberToken } = useAuth();
 const { branding, loadBranding } = useSiteBranding();
 const { journal, loadOrgInfo } = useOrgInfo();
 
@@ -35,20 +30,12 @@ onMounted(async () => {
     await Promise.all([loadBranding(), loadOrgInfo()]);
 
     try {
-        const { data } = await journalApi(memberToken.value).get('/submissions/public');
+        const { data } = await publicApi().get('/articles', { params: { per_page: 6 } });
         articles.value = data.data || [];
     } finally {
         loading.value = false;
     }
 });
-
-async function handleDownload(article) {
-    if (!article.can_access || !article.document_url) {
-        return;
-    }
-
-    await downloadJournalDocument(article.document_url, memberToken.value || null);
-}
 
 function paragraphs(text) {
     if (!text) {
@@ -86,11 +73,15 @@ function paragraphs(text) {
                             “{{ journal?.motto || branding?.parent_org?.motto }}”
                         </blockquote>
                         <div class="mt-8 flex flex-wrap gap-3">
-                            <RouterLink to="/journal/author-guidelines" class="btn-gold inline-flex items-center gap-2">
-                                Author guidelines
+                            <RouterLink to="/articles" class="btn-gold inline-flex items-center gap-2">
+                                Browse articles
                                 <ArrowRightIcon class="size-4" aria-hidden="true" />
                             </RouterLink>
-                            <RouterLink to="/journal/editorial-board" class="btn-institutional inline-flex items-center gap-2">
+                            <RouterLink to="/articles/current-issue" class="btn-institutional inline-flex items-center gap-2">
+                                <BookOpenIcon class="size-4" aria-hidden="true" />
+                                Current issue
+                            </RouterLink>
+                            <RouterLink to="/journal/editorial-board" class="btn-secondary inline-flex items-center gap-2 !rounded-xl">
                                 <UserGroupIcon class="size-4" aria-hidden="true" />
                                 Editorial team
                             </RouterLink>
@@ -248,10 +239,14 @@ function paragraphs(text) {
 
         <section class="bg-white py-12 sm:py-16">
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div class="flex items-end justify-between gap-4">
+                <div class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                     <div>
                         <h2 class="font-display text-2xl font-bold text-institutional-dark">Published Articles</h2>
-                        <p class="mt-1 text-text-secondary">Peer-reviewed manuscripts approved for publication.</p>
+                        <p class="mt-1 text-text-secondary">Permanent Crossref-ready landing pages for each published article.</p>
+                    </div>
+                    <div class="flex flex-wrap gap-3">
+                        <RouterLink to="/articles/current-issue" class="btn-secondary !rounded-xl !py-2 text-sm">Current issue</RouterLink>
+                        <RouterLink to="/articles" class="btn-institutional !py-2 text-sm">View all articles</RouterLink>
                     </div>
                 </div>
 
@@ -264,34 +259,29 @@ function paragraphs(text) {
                     </RouterLink>
                 </div>
                 <div v-else class="mt-10 grid gap-6 lg:grid-cols-2">
-                    <article v-for="article in articles" :key="article.id" class="card p-6">
-                        <div class="flex items-start justify-between gap-4">
-                            <div>
-                                <RouterLink :to="`/journal/${article.slug || article.id}`" class="text-lg font-semibold text-slate-900 hover:text-brand-700">
-                                    {{ article.title }}
-                                </RouterLink>
-                                <p class="mt-1 text-sm text-slate-500">{{ article.author_name }} · {{ article.category }}</p>
-                            </div>
-                            <JournalStatusBadge :status="article.status" />
+                    <article v-for="article in articles" :key="article.uuid" class="card p-6">
+                        <div>
+                            <p class="text-xs font-semibold uppercase tracking-wide text-institutional">
+                                {{ article.article_type }}
+                                <span v-if="article.volume_issue_label"> · {{ article.volume_issue_label }}</span>
+                            </p>
+                            <RouterLink :to="article.landing_url" class="mt-1 block text-lg font-semibold text-slate-900 hover:text-brand-700">
+                                {{ article.title }}
+                            </RouterLink>
+                            <p class="mt-1 text-sm text-slate-500">{{ article.author_names }}</p>
                         </div>
                         <p class="mt-4 line-clamp-3 text-sm text-slate-600">{{ article.abstract }}</p>
-                        <div class="mt-4 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                            <span>Submitted {{ formatJournalDate(article.date_submitted) }}</span>
-                            <span v-if="article.mins_read">{{ article.mins_read }} min read</span>
-                            <span v-if="article.visibility === 'members_only'" class="inline-flex items-center gap-1 text-amber-700">
-                                <LockClosedIcon class="size-3.5" /> Members only
-                            </span>
-                        </div>
                         <div class="mt-5 flex gap-3">
-                            <RouterLink :to="`/journal/${article.slug || article.id}`" class="btn-secondary !py-2 text-sm">Read more</RouterLink>
-                            <button
-                                v-if="article.can_access"
+                            <RouterLink :to="article.landing_url" class="btn-secondary !py-2 text-sm">Open landing page</RouterLink>
+                            <a
+                                v-if="article.pdf_url"
+                                :href="article.pdf_url"
+                                target="_blank"
+                                rel="noopener noreferrer"
                                 class="btn-primary inline-flex items-center gap-1.5 !py-2 text-sm"
-                                @click="handleDownload(article)"
                             >
-                                Download PDF
-                            </button>
-                            <RouterLink v-else to="/member/login" class="self-center text-sm text-brand-600">Sign in to access</RouterLink>
+                                Full-text PDF
+                            </a>
                         </div>
                     </article>
                 </div>

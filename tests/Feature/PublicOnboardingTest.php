@@ -143,7 +143,7 @@ class PublicOnboardingTest extends TestCase
 
         $this->assertDatabaseHas('membership_applications', [
             'applicant_email' => 'newmember@example.com',
-            'status' => ApplicationStatus::UnderReview->value,
+            'status' => ApplicationStatus::Approved->value,
         ]);
 
         $application = MembershipApplication::query()

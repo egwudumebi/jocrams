@@ -11,24 +11,22 @@ class FeeCatalogSeeder extends Seeder
 {
     public function run(): void
     {
+        $membershipFee = (float) config('jocrams.fees.membership_registration', 25000);
+
+        // Retire legacy Associate/Full catalog rows (including soft-deleted).
+        FeeCatalogItem::withTrashed()
+            ->whereIn('code', ['membership_associate_annual', 'membership_full_annual'])
+            ->update(['is_active' => false]);
+
         $items = [
             [
-                'name' => 'Associate Membership — Annual Dues',
-                'code' => 'membership_associate_annual',
+                'name' => 'SICAMA Membership — Registration & Annual Dues',
+                'code' => 'membership_sicama_annual',
                 'category' => FeeCatalogCategory::Membership,
                 'fee_type' => FeeCatalogType::AnnualDues,
-                'amount' => (float) config('jocrams.fees.membership_registration', 20000),
-                'description' => 'Membership registration / annual dues (client-documented ₦20,000).',
+                'amount' => $membershipFee,
+                'description' => 'Flat SICAMA membership fee (₦10,000 registration + ₦15,000 annual dues).',
                 'sort_order' => 1,
-            ],
-            [
-                'name' => 'Full Membership — Annual Dues',
-                'code' => 'membership_full_annual',
-                'category' => FeeCatalogCategory::Membership,
-                'fee_type' => FeeCatalogType::AnnualDues,
-                'amount' => (float) config('jocrams.fees.membership_registration', 20000),
-                'description' => 'Membership registration / annual dues (client-documented ₦20,000).',
-                'sort_order' => 2,
             ],
             [
                 'name' => 'Standard Manuscript Submission Fee',
@@ -69,19 +67,20 @@ class FeeCatalogSeeder extends Seeder
         ];
 
         foreach ($items as $item) {
-            FeeCatalogItem::query()->updateOrCreate(
-                ['code' => $item['code']],
-                [
-                    'name' => $item['name'],
-                    'category' => $item['category'],
-                    'fee_type' => $item['fee_type'],
-                    'amount' => $item['amount'],
-                    'currency' => 'NGN',
-                    'description' => $item['description'],
-                    'sort_order' => $item['sort_order'],
-                    'is_active' => true,
-                ],
-            );
+            $row = FeeCatalogItem::withTrashed()->firstOrNew(['code' => $item['code']]);
+            if ($row->trashed()) {
+                $row->restore();
+            }
+            $row->fill([
+                'name' => $item['name'],
+                'category' => $item['category'],
+                'fee_type' => $item['fee_type'],
+                'amount' => $item['amount'],
+                'currency' => 'NGN',
+                'description' => $item['description'],
+                'sort_order' => $item['sort_order'],
+                'is_active' => true,
+            ])->save();
         }
     }
 }

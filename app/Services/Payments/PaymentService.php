@@ -96,7 +96,10 @@ class PaymentService
             throw ValidationException::withMessages(['member' => ['Active membership required.']]);
         }
 
-        app(MembershipRenewalService::class)->assertCanRenew($member);
+        app(MembershipRenewalService::class)->assertCanPayMembershipFee($member);
+
+        $amount = (float) ($member->tier?->annual_dues
+            ?? config('jocrams.fees.membership_registration', 25000));
 
         $subscription = Subscription::query()->create([
             'member_id' => $member->id,
@@ -104,19 +107,19 @@ class PaymentService
             'starts_at' => now(),
             'ends_at' => now()->addYear(),
             'status' => 'pending',
-            'amount' => $member->tier->annual_dues,
-            'currency' => $member->tier->currency,
+            'amount' => $amount,
+            'currency' => $member->tier?->currency ?? config('payments.currency', 'NGN'),
         ]);
 
         return $this->initiate(
             user: $user,
-            amount: (float) $member->tier->annual_dues,
+            amount: $amount,
             purpose: PaymentPurpose::Dues,
             gateway: $gateway,
             idempotencyKey: $idempotencyKey,
             payable: $subscription,
             member: $member,
-            description: "Annual dues - {$member->tier->name}",
+            description: "SICAMA membership fee (₦10,000 registration + ₦15,000 annual dues) - {$member->tier?->name}",
         );
     }
 
@@ -325,15 +328,38 @@ class PaymentService
         $payable = $payment->payable;
 
         if ($payable instanceof Subscription) {
+            $endsAt = now()->addYear();
+
             $payable->update([
                 'payment_id' => $payment->id,
                 'status' => 'active',
+                'starts_at' => now(),
+                'ends_at' => $endsAt,
             ]);
 
             $payable->member->update([
-                'expires_at' => $payable->ends_at,
+                'expires_at' => $endsAt,
                 'status' => MemberStatus::Active,
             ]);
+
+            // ID card + certificate + welcome letter (same membership number).
+            app(\App\Services\Credentials\MembershipCredentialPackService::class)
+                ->issuePack($payable->member->fresh(['user.profile', 'tier']), 'sicama');
+        }
+
+        // Registration purpose without a subscription payable (legacy proofs): still issue pack.
+        if (
+            $payment->purpose === PaymentPurpose::Registration
+            && ! ($payable instanceof Subscription)
+            && $payment->member
+        ) {
+            $payment->member->update([
+                'expires_at' => now()->addYear(),
+                'status' => MemberStatus::Active,
+            ]);
+
+            app(\App\Services\Credentials\MembershipCredentialPackService::class)
+                ->issuePack($payment->member->fresh(['user.profile', 'tier']), 'sicama');
         }
 
         if ($payable instanceof Donation) {

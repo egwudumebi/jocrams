@@ -2,6 +2,7 @@
 
 namespace App\Services\Journal;
 
+use App\Enums\JournalSubmissionStatus;
 use App\Models\JournalCallForPapers;
 use App\Models\JournalSubmission;
 use App\Models\User;
@@ -88,7 +89,7 @@ class JournalSubmissionService
 
         $this->activityLog->log($author, 'journal.submitted', properties: ['submission_id' => $submissionUuid]);
 
-        if ($status === 'submitted') {
+        if ($status === 'submitted' && ! $this->defersReceiptAcknowledgement()) {
             $this->notifier->notifySubmissionReceived($submissionUuid);
         }
 
@@ -104,22 +105,64 @@ class JournalSubmissionService
 
     public function finalizePaidSubmission(JournalSubmission $submission): void
     {
-        if ($submission->status !== 'payment_pending') {
+        if ($submission->status !== JournalSubmissionStatus::PaymentPending) {
             return;
         }
 
-        $submission->update(['status' => 'submitted']);
+        $submission->update(['status' => JournalSubmissionStatus::Submitted]);
 
         $this->repository->addTimelineEvent(
             timelineId: (string) Str::uuid(),
             submissionUuid: $submission->uuid,
             actorId: (string) $submission->author_id,
             event: 'submission.payment_received',
-            metadata: ['status' => 'submitted'],
+            metadata: ['status' => JournalSubmissionStatus::Submitted->value],
             occurredAt: now()->toDateTimeString(),
         );
 
-        $this->notifier->notifySubmissionReceived($submission->uuid);
+        // JOCRAMS defers the author email until an editor acknowledges receipt.
+        if (! $this->defersReceiptAcknowledgement()) {
+            $this->notifier->notifySubmissionReceived($submission->uuid);
+        }
+    }
+
+    public function acknowledgeReceipt(User $actor, string $submissionIdentifier): void
+    {
+        if (! $this->defersReceiptAcknowledgement()) {
+            throw new InvalidArgumentException('Receipt acknowledgement is not enabled for this site.');
+        }
+
+        $submission = $this->access->resolveSubmission($submissionIdentifier);
+        $this->access->assertCanAcknowledgeReceipt($actor, $submission);
+
+        if ($submission->receipt_acknowledged_at !== null) {
+            throw new InvalidArgumentException('Receipt has already been acknowledged for this submission.');
+        }
+
+        $submission->update([
+            'receipt_acknowledged_at' => now(),
+            'receipt_acknowledged_by' => (string) $actor->uuid,
+        ]);
+
+        $this->repository->addTimelineEvent(
+            timelineId: (string) Str::uuid(),
+            submissionUuid: $submission->uuid,
+            actorId: (string) $actor->uuid,
+            event: 'submission.receipt_acknowledged',
+            metadata: ['status' => $submission->status->value],
+            occurredAt: now()->toDateTimeString(),
+        );
+
+        $this->activityLog->log($actor, 'journal.receipt_acknowledged', properties: [
+            'submission_id' => $submission->uuid,
+        ]);
+
+        $this->notifier->notifyReceiptAcknowledged($submission->uuid);
+    }
+
+    private function defersReceiptAcknowledgement(): bool
+    {
+        return (bool) config('jocrams.journal.defer_receipt_acknowledgement', false);
     }
 
     public function review(

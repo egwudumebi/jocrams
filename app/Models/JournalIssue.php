@@ -13,15 +13,21 @@ class JournalIssue extends Model
     use HasUuid;
 
     protected $fillable = [
-        'journal_volume_id', 'title', 'issue_number', 'description', 'status', 'sort_order', 'published_at',
+        'journal_volume_id', 'title', 'issue_number', 'description', 'status', 'is_current', 'sort_order', 'published_at',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => JournalIssueStatus::class,
+            'is_current' => 'boolean',
             'published_at' => 'datetime',
         ];
+    }
+
+    public function publishedArticles(): HasMany
+    {
+        return $this->hasMany(PublishedArticle::class, 'journal_issue_id');
     }
 
     public function volume(): BelongsTo

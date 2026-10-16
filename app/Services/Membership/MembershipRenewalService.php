@@ -3,7 +3,10 @@
 namespace App\Services\Membership;
 
 use App\Enums\MemberStatus;
+use App\Enums\PaymentPurpose;
+use App\Enums\PaymentStatus;
 use App\Models\Member;
+use App\Models\Payment;
 use App\Models\SystemSetting;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
@@ -63,13 +66,49 @@ class MembershipRenewalService
         ]);
     }
 
+    /**
+     * First-time SICAMA fee is allowed even when the membership year is still open.
+     * Renewals continue to use the normal renewal window.
+     */
+    public function canPayMembershipFee(Member $member): bool
+    {
+        if ($this->canRenew($member)) {
+            return true;
+        }
+
+        return ! $this->hasSuccessfulMembershipPayment($member);
+    }
+
+    public function assertCanPayMembershipFee(Member $member): void
+    {
+        if ($this->canPayMembershipFee($member)) {
+            return;
+        }
+
+        $this->assertCanRenew($member);
+    }
+
+    public function hasSuccessfulMembershipPayment(Member $member): bool
+    {
+        return Payment::query()
+            ->where('member_id', $member->id)
+            ->whereIn('purpose', [PaymentPurpose::Dues, PaymentPurpose::Registration])
+            ->where('status', PaymentStatus::Successful)
+            ->exists();
+    }
+
     /** @return array<string, mixed> */
     public function present(Member $member): array
     {
         $opensAt = $this->renewalOpensAt($member);
+        $firstPaymentDue = $member->isAwaitingMembershipPayment()
+            || ! $this->hasSuccessfulMembershipPayment($member);
 
         return [
             'can_renew' => $this->canRenew($member),
+            'can_pay_membership_fee' => $this->canPayMembershipFee($member),
+            'first_payment_due' => $firstPaymentDue && $member->isAwaitingMembershipPayment(),
+            'awaiting_membership_payment' => $member->isAwaitingMembershipPayment(),
             'renewal_window_days' => $this->renewalWindowDays(),
             'renewal_opens_at' => $opensAt?->toIso8601String(),
             'expires_at' => $member->expires_at?->toIso8601String(),

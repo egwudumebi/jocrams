@@ -23,6 +23,12 @@ class ProfileImageController extends Controller
             throw new NotFoundHttpException('Stored profile image is unavailable.');
         }
 
-        return response()->file(Storage::disk('public')->path($path));
+        $absolute = Storage::disk('public')->path($path);
+        $mtime = @filemtime($absolute) ?: time();
+
+        return response()->file($absolute, [
+            'Cache-Control' => 'public, max-age=604800, immutable',
+            'Last-Modified' => gmdate('D, d M Y H:i:s', $mtime).' GMT',
+        ]);
     }
 }

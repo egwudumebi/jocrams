@@ -18,6 +18,7 @@ class JournalSubmission extends Model
         'status', 'submission_fee_amount', 'publication_fee_amount',
         'submission_payment_id', 'publication_payment_id',
         'visibility', 'reviewer_id', 'review_comment', 'rejection_reason', 'reviewed_at',
+        'receipt_acknowledged_at', 'receipt_acknowledged_by',
     ];
 
     protected function casts(): array
@@ -27,6 +28,7 @@ class JournalSubmission extends Model
             'visibility' => JournalVisibility::class,
             'references' => 'array',
             'reviewed_at' => 'datetime',
+            'receipt_acknowledged_at' => 'datetime',
         ];
     }
 

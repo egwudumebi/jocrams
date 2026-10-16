@@ -10,6 +10,7 @@ import RichTextEditor from '../../../components/forms/RichTextEditor.vue';
 import { useAuth } from '../../../composables/useAuth';
 import { editorialBoardRoles } from '../../../config/editorialBoardRoles';
 import { extractApiError } from '../../../utils/apiError';
+import { confirmAction } from '../../../utils/swal';
 
 const { getJournalClient, fetchAdminProfile } = useAuth();
 
@@ -79,7 +80,13 @@ async function toggleActive(member) {
 }
 
 async function removeMember(member) {
-    if (!window.confirm(`Remove ${member.name} from the editorial board?`)) {
+    const confirmed = await confirmAction({
+        title: 'Remove board member?',
+        text: `${member.name} will be removed from the public editorial board listing.`,
+        confirmText: 'Remove',
+        tone: 'danger',
+    });
+    if (!confirmed) {
         return;
     }
 
@@ -95,12 +102,26 @@ async function removeMember(member) {
 
 <template>
     <div>
-        <AdminPageIntro description="Manage journal editorial board members for calls for papers and public listings." />
+        <AdminPageIntro description="Public-facing editorial leadership shown on the website and on calls for papers.">
+            <template #actions>
+                <RouterLink to="/admin/journal" class="btn-secondary w-full !rounded-xl text-center sm:w-auto">
+                    Submissions
+                </RouterLink>
+                <RouterLink to="/admin/journal/calls-for-papers" class="btn-secondary w-full !rounded-xl text-center sm:w-auto">
+                    Calls for papers
+                </RouterLink>
+                <RouterLink to="/admin/journal/reviewers" class="btn-primary w-full !rounded-xl text-center sm:w-auto">
+                    Peer reviewers
+                </RouterLink>
+            </template>
+        </AdminPageIntro>
 
-        <div class="mb-4 flex flex-wrap gap-2">
-            <RouterLink to="/admin/journal" class="btn-secondary !rounded-xl text-sm">← Submissions</RouterLink>
-            <RouterLink to="/admin/journal/calls-for-papers" class="btn-secondary !rounded-xl text-sm">Calls for papers</RouterLink>
-        </div>
+        <AdminAlert type="info">
+            This page is <strong>not</strong> where peer reviewers are added.
+            Board roles like “Peer Review Editor” are display titles for the public site.
+            To assign manuscripts, use
+            <RouterLink to="/admin/journal/reviewers" class="font-semibold underline">Peer reviewers</RouterLink>.
+        </AdminAlert>
 
         <AdminAlert v-if="message" type="success">{{ message }}</AdminAlert>
         <AdminAlert v-if="error" type="error">{{ error }}</AdminAlert>
@@ -139,11 +160,28 @@ async function removeMember(member) {
             </button>
         </AdminPanel>
 
-        <AdminPanel title="Editorial board">
+        <div class="mb-6 grid gap-4 sm:grid-cols-3">
+            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Total</p>
+                <p class="mt-1 text-2xl font-semibold text-slate-900">{{ members.length }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Active</p>
+                <p class="mt-1 text-2xl font-semibold text-emerald-700">{{ members.filter((m) => m.is_active).length }}</p>
+            </div>
+            <div class="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
+                <p class="text-xs font-medium uppercase tracking-wide text-slate-500">Inactive</p>
+                <p class="mt-1 text-2xl font-semibold text-slate-500">{{ members.filter((m) => !m.is_active).length }}</p>
+            </div>
+        </div>
+
+        <AdminPanel title="Current board" description="Visible on the public editorial board and available when composing calls for papers.">
+            <div v-if="loading" class="empty-state bg-white">Loading board members…</div>
+
             <AdminEmptyState
-                v-if="!loading && !members.length"
+                v-else-if="!members.length"
                 title="No board members"
-                description="Add editorial board members to assign them to calls for papers."
+                description="Add leadership and editorial roles that should appear on the public site."
             >
                 <template #icon><UserGroupIcon class="size-6" /></template>
             </AdminEmptyState>
@@ -160,7 +198,7 @@ async function removeMember(member) {
                                 {{ member.is_active ? 'Active' : 'Inactive' }}
                             </span>
                         </div>
-                        <p class="text-sm text-slate-600">{{ member.role_title }}</p>
+                        <p class="mt-1 text-sm font-medium text-slate-700">{{ member.role_title }}</p>
                         <p v-if="member.affiliation" class="text-sm text-slate-500">{{ member.affiliation }}</p>
                     </div>
                     <div class="flex shrink-0 gap-2">

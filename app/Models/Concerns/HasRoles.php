@@ -38,6 +38,15 @@ trait HasRoles
         $this->roles()->syncWithoutDetaching([$role->id]);
     }
 
+    public function removeRole(Role|string $role): void
+    {
+        if (is_string($role)) {
+            $role = Role::query()->where('slug', $role)->firstOrFail();
+        }
+
+        $this->roles()->detach($role->id);
+    }
+
     /** @return list<string> */
     public function permissionSlugs(): array
     {
@@ -62,7 +71,9 @@ trait HasRoles
 
     public function canJournalSubmit(): bool
     {
-        return $this->isActiveMember() || $this->canJournalAssign();
+        // Journal operations are open to any authenticated account.
+        // SICAMA/SEC association membership is separate and is not required to submit.
+        return true;
     }
 
     public function canJournalReview(): bool

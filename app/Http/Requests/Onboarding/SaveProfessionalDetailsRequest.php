@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Onboarding;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class SaveProfessionalDetailsRequest extends FormRequest
 {
@@ -16,7 +17,10 @@ class SaveProfessionalDetailsRequest extends FormRequest
     {
         return [
             'session_id' => ['required', 'uuid'],
-            'membership_tier_id' => ['required', 'exists:membership_tiers,id'],
+            'membership_tier_id' => [
+                'required',
+                Rule::exists('membership_tiers', 'id')->where('is_active', true),
+            ],
             'institution' => ['required', 'string', 'max:255'],
             'qualification' => ['required', 'string', 'max:255'],
             'years_experience' => ['required', 'integer', 'min:0', 'max:80'],

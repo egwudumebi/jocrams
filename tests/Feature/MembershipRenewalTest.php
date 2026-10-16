@@ -60,13 +60,29 @@ class MembershipRenewalTest extends TestCase
 
         $user = User::factory()->create();
         $tier = MembershipTier::query()->first();
-        Member::query()->create([
+        $member = Member::query()->create([
             'user_id' => $user->id,
             'membership_tier_id' => $tier->id,
-            'membership_number' => 'MEM-TEST5678',
+            'membership_number' => 'SICAMA 2026-27/0500',
             'status' => MemberStatus::Active,
             'joined_at' => now(),
             'expires_at' => now()->addYear(),
+            'metadata' => ['organization' => 'sicama'],
+        ]);
+
+        // Already paid once — early renewal outside the window must be blocked.
+        \App\Models\Payment::query()->create([
+            'user_id' => $user->id,
+            'member_id' => $member->id,
+            'gateway' => PaymentGateway::Manual,
+            'reference' => 'PAID_ALREADY_001',
+            'idempotency_key' => 'paid-already-001',
+            'amount' => 25000,
+            'currency' => 'NGN',
+            'status' => \App\Enums\PaymentStatus::Successful,
+            'purpose' => \App\Enums\PaymentPurpose::Dues,
+            'description' => 'SICAMA membership fee',
+            'paid_at' => now()->subMonths(2),
         ]);
 
         Sanctum::actingAs($user);

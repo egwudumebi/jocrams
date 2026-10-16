@@ -14,7 +14,26 @@ class ProfileImageUrl
             return null;
         }
 
-        return url('/api/v1/public/users/'.$userUuid.'/profile-image');
+        $version = self::versionForPath($profileImagePath);
+
+        // Prefer the public disk URL so LiteSpeed can serve the file statically.
+        // Cache-bust so browsers discard 404s cached during outages / re-links.
+        if (Storage::disk('public')->exists($profileImagePath)) {
+            return url('/storage/'.ltrim($profileImagePath, '/')).'?v='.$version;
+        }
+
+        return url('/api/v1/public/users/'.$userUuid.'/profile-image').'?v='.$version;
+    }
+
+    private static function versionForPath(string $path): string
+    {
+        try {
+            $mtime = Storage::disk('public')->lastModified($path);
+
+            return substr(sha1($path.'|'.$mtime), 0, 12);
+        } catch (\Throwable) {
+            return substr(sha1($path), 0, 12);
+        }
     }
 
     public static function dataUriForUser(User $user): ?string

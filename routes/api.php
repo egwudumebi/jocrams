@@ -57,6 +57,8 @@ use App\Http\Controllers\Api\V1\Public\OpenJournalCallsController;
 use App\Http\Controllers\Api\V1\Public\OrgInfoController;
 use App\Http\Controllers\Api\V1\Public\OnboardingController;
 use App\Http\Controllers\Api\V1\Public\PageController as PublicPageController;
+use App\Http\Controllers\Api\V1\Public\PublishedArticleController as PublicPublishedArticleController;
+use App\Http\Controllers\Api\V1\Admin\PublishedArticleController as AdminPublishedArticleController;
 use App\Http\Controllers\Api\V1\Public\PaymentVerifyController;
 use App\Http\Controllers\Api\V1\Public\ProfileImageController;
 use App\Http\Controllers\Api\V1\Public\FeeCatalogController as PublicFeeCatalogController;
@@ -66,10 +68,12 @@ use App\Http\Controllers\Api\V1\Public\SiteBrandingController;
 use App\Http\Controllers\Api\V1\Public\SicamaProfileController;
 use App\Http\Controllers\Api\V1\Public\VerifyMembershipNumberController;
 use App\Http\Controllers\Api\V1\Public\WebhookController;
+use App\Http\Controllers\Api\V1\Journal\AcknowledgeJournalSubmissionReceiptController;
 use App\Http\Controllers\Api\V1\Journal\AddEditorialCommentController;
 use App\Http\Controllers\Api\V1\Journal\AssignReviewerController;
 use App\Http\Controllers\Api\V1\Journal\BrowseJournalsController;
 use App\Http\Controllers\Api\V1\Journal\CreateReviewerController;
+use App\Http\Controllers\Api\V1\Journal\RemoveReviewerController;
 use App\Http\Controllers\Api\V1\Journal\DownloadJournalDocumentController;
 use App\Http\Controllers\Api\V1\Journal\ListAllJournalSubmissionsController;
 use App\Http\Controllers\Api\V1\Journal\ListEditorialCommentsController;
@@ -124,8 +128,14 @@ Route::prefix('v1')->group(function (): void {
         Route::get('membership-tiers', [MembershipTierController::class, 'index']);
         Route::get('fee-catalog', PublicFeeCatalogController::class);
         Route::get('journal/calls/open', OpenJournalCallsController::class);
+        Route::get('articles', [PublicPublishedArticleController::class, 'index']);
+        Route::get('articles/current-issue', [PublicPublishedArticleController::class, 'currentIssue']);
+        Route::get('articles/{slug}', [PublicPublishedArticleController::class, 'show'])
+            ->where('slug', '[A-Za-z0-9\-]+');
         Route::get('members', [PublicMemberController::class, 'index']);
         Route::get('members/{member:uuid}', [PublicMemberController::class, 'show']);
+        Route::get('qr.svg', \App\Http\Controllers\Api\V1\Public\QrCodeController::class)
+            ->middleware('throttle:60,1');
         Route::post('members/verify-number', VerifyMembershipNumberController::class)
             ->middleware('throttle:verify');
         Route::prefix('onboarding')->middleware('throttle:auth')->group(function (): void {
@@ -380,6 +390,19 @@ Route::prefix('v1')->group(function (): void {
             Route::apiResource('news-articles', AdminNewsArticleController::class)
                 ->middleware('permission:content.manage');
 
+            Route::get('published-articles', [AdminPublishedArticleController::class, 'index'])
+                ->middleware('permission:content.manage');
+            Route::post('published-articles', [AdminPublishedArticleController::class, 'store'])
+                ->middleware(['permission:content.manage', 'throttle:uploads']);
+            Route::get('published-articles/{article:uuid}', [AdminPublishedArticleController::class, 'show'])
+                ->middleware('permission:content.manage');
+            Route::post('published-articles/{article:uuid}', [AdminPublishedArticleController::class, 'update'])
+                ->middleware(['permission:content.manage', 'throttle:uploads']);
+            Route::put('published-articles/{article:uuid}', [AdminPublishedArticleController::class, 'update'])
+                ->middleware('permission:content.manage');
+            Route::delete('published-articles/{article:uuid}', [AdminPublishedArticleController::class, 'destroy'])
+                ->middleware('permission:content.manage');
+
             Route::apiResource('notification-templates', NotificationTemplateController::class)
                 ->middleware('permission:communications.templates.manage');
 
@@ -427,6 +450,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('queue', ListReviewerQueueController::class)->middleware('journal.ability:journal.review');
             Route::post('admin/reviewers', CreateReviewerController::class)->middleware('journal.ability:journal.assign');
             Route::get('admin/reviewers', ListReviewersController::class)->middleware('journal.ability:journal.assign');
+            Route::delete('admin/reviewers/{reviewerId}', RemoveReviewerController::class)->middleware('journal.ability:journal.assign');
             Route::get('admin/calls-for-papers', [JournalCallForPapersController::class, 'index'])->middleware('journal.ability:journal.assign');
             Route::post('admin/calls-for-papers', [JournalCallForPapersController::class, 'store'])->middleware('journal.ability:journal.assign');
             Route::get('admin/calls-for-papers/{callForPaper:uuid}', [JournalCallForPapersController::class, 'show'])->middleware('journal.ability:journal.assign');
@@ -455,6 +479,7 @@ Route::prefix('v1')->group(function (): void {
             Route::put('admin/issues/{issue:uuid}', [JournalIssueController::class, 'update'])->middleware('journal.ability:journal.assign');
             Route::delete('admin/issues/{issue:uuid}', [JournalIssueController::class, 'destroy'])->middleware('journal.ability:journal.assign');
             Route::post('submissions/{submissionId}/review', ReviewJournalSubmissionController::class)->middleware('journal.ability:journal.review');
+            Route::post('submissions/{submissionId}/acknowledge-receipt', AcknowledgeJournalSubmissionReceiptController::class)->middleware('journal.ability:journal.assign');
             Route::post('submissions/{submissionId}/assign', AssignReviewerController::class)->middleware('journal.ability:journal.assign');
             Route::post('submissions/{submissionId}/assignment/respond', RespondToReviewerAssignmentController::class)->middleware('journal.ability:journal.review');
             Route::post('submissions/{submissionId}/production-document', UploadProductionDocumentController::class)->middleware('journal.ability:journal.publish');

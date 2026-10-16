@@ -1,7 +1,8 @@
 <script setup>
+import { ref, watch } from 'vue';
 import { PhotoIcon } from '@heroicons/vue/24/outline';
 
-defineProps({
+const props = defineProps({
     url: {
         type: String,
         default: '',
@@ -16,6 +17,12 @@ defineProps({
         validator: (value) => ['card', 'thumb', 'hero'].includes(value),
     },
 });
+
+const failed = ref(false);
+
+watch(() => props.url, () => {
+    failed.value = false;
+});
 </script>
 
 <template>
@@ -28,10 +35,11 @@ defineProps({
         }"
     >
         <img
-            v-if="url"
+            v-if="url && !failed"
             :src="url"
             :alt="`${title} banner`"
             class="size-full object-cover"
+            @error="failed = true"
         />
         <div v-else class="event-banner-thumb-placeholder">
             <PhotoIcon class="size-5 text-slate-400 sm:size-6" aria-hidden="true" />

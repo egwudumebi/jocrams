@@ -18,6 +18,7 @@ const nav = [
     { to: '/members', label: 'Members' },
     { to: '/downloads', label: 'Library' },
     { to: '/journal', label: 'Journal' },
+    { to: '/articles', label: 'Articles' },
     { to: '/contact', label: 'Contact' },
 ];
 
@@ -32,8 +33,9 @@ function closeMobileNav() {
 
 <template>
     <div class="flex min-h-screen flex-col bg-white">
+        <div class="sticky top-0 z-[60]">
         <SiteBanner />
-        <header class="glass-header sticky top-0 z-50">
+        <header class="glass-header">
             <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3.5 sm:gap-6 sm:px-6 lg:px-8">
                 <div class="flex min-w-0 items-center gap-2 sm:gap-3">
                     <button
@@ -101,6 +103,7 @@ function closeMobileNav() {
                 </div>
             </div>
         </header>
+        </div>
 
         <MobileNavDrawer
             :open="mobileNavOpen"

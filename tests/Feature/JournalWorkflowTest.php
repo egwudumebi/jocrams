@@ -36,6 +36,24 @@ class JournalWorkflowTest extends TestCase
         Storage::fake('local');
     }
 
+    public function test_authenticated_non_member_can_submit_manuscript(): void
+    {
+        $author = User::factory()->create(['email' => 'free-author@gmail.com']);
+        Sanctum::actingAs($author);
+
+        $call = $this->createOpenCall();
+
+        $this->post('/api/v1/journal/submissions', [
+            'call_for_papers_uuid' => $call->uuid,
+            'title' => 'Open Access Paper',
+            'author_name' => 'Free Author',
+            'author_email' => 'free-author@gmail.com',
+            'abstract' => 'Abstract text for the open submission.',
+            'category' => 'research',
+            'document' => $this->docxUpload(),
+        ])->assertCreated();
+    }
+
     public function test_submission_rejects_pdf_and_accepts_docx(): void
     {
         $author = $this->createMemberUser();

@@ -113,4 +113,33 @@ class MemberManagementTest extends TestCase
         ])->assertUnprocessable()
             ->assertJsonValidationErrors(['email']);
     }
+
+    public function test_admin_can_add_sicama_member_with_role(): void
+    {
+        Notification::fake();
+
+        Sanctum::actingAs(User::query()->where('email', 'admin@jocrams.test')->first());
+
+        $tier = MembershipTier::query()->where('slug', 'sicama')->first()
+            ?? MembershipTier::query()->first();
+
+        $response = $this->postJson('/api/v1/admin/members', [
+            'name' => 'SICAMA Manual',
+            'email' => 'sicama.manual@example.com',
+            'membership_tier_id' => $tier->id,
+            'organization' => 'sicama',
+            'card_role' => 'EXCO Member',
+            'expires_at' => now()->addYear()->toDateString(),
+        ]);
+
+        $response->assertCreated();
+
+        $member = Member::query()->whereHas('user', fn ($q) => $q->where('email', 'sicama.manual@example.com'))->first();
+
+        $this->assertNotNull($member);
+        $this->assertStringStartsWith('SICAMA ', $member->membership_number);
+        $this->assertSame('sicama', $member->metadata['organization'] ?? null);
+        $this->assertSame('EXCO Member', $member->metadata['card_role'] ?? null);
+        $this->assertTrue($member->credentials()->where('template_key', 'sicama_membership_card')->exists());
+    }
 }

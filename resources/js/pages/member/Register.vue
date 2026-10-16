@@ -46,16 +46,16 @@ function formatDues(amount) {
 <template>
     <AuthPageShell
         title="Join our association"
-        subtitle="Create your account to start a membership application. Choose your tier during the application process."
+        subtitle="Create your account to apply for SICAMA membership. Journal submission does not require membership."
         :bullets="[
-            'Create your account and complete your application',
-            'Pay the registration fee by UBA bank transfer',
-            'Appear in the public directory after admin approval',
+            'Create your account and complete the short application',
+            'Pay the ₦25,000 SICAMA fee by UBA bank transfer',
+            'Receive your ID card, certificate, and welcome letter after payment',
         ]"
     >
         <template #aside>
             <div v-if="tiers.length" class="mt-10 space-y-3">
-                <p class="label-caps text-accent-gold/90">Membership tiers</p>
+                <p class="label-caps text-accent-gold/90">SICAMA membership</p>
                 <div
                     v-for="tier in tiers"
                     :key="tier.uuid"

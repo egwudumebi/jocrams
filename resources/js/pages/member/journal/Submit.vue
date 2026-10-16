@@ -310,12 +310,12 @@ async function submitManuscript() {
         >
             <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <p class="font-semibold text-amber-900">Active membership required</p>
+                    <p class="font-semibold text-amber-900">Sign in to submit</p>
                     <p class="mt-1 text-sm text-amber-800">
-                        Complete your membership application before submitting manuscripts to the journal.
+                        Create a free account or sign in to submit manuscripts. Association membership is optional and separate from journal submission.
                     </p>
                 </div>
-                <RouterLink to="/member/applications" class="btn-institutional shrink-0">Go to applications</RouterLink>
+                <RouterLink to="/member/login" class="btn-institutional shrink-0">Sign in</RouterLink>
             </div>
         </div>
 

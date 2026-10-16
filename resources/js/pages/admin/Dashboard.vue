@@ -9,13 +9,17 @@ import {
     PlusIcon,
     UserGroupIcon,
 } from '@heroicons/vue/24/outline';
+import AdminAlert from '../../components/admin/AdminAlert.vue';
 import { useAuth } from '../../composables/useAuth';
 import ExodusAreaChart from '../../components/charts/ExodusAreaChart.vue';
+import { downloadAdminExport, messageFromBlobError } from '../../utils/download';
 
 const { getAdminClient } = useAuth();
 const loading = ref(true);
 const dashboard = ref(null);
 const message = ref('');
+const exportError = ref('');
+const exportingKey = ref('');
 
 onMounted(async () => {
     try {
@@ -152,17 +156,41 @@ async function refreshDashboard() {
 }
 
 const quickReports = [
-    { label: 'Monthly Member Growth', href: '/api/v1/admin/exports/members?format=csv', action: 'Download' },
-    { label: 'Event Attendance', to: '/admin/event-registrations', action: 'Open' },
-    { label: 'Dues Collection Status', href: '/api/v1/admin/exports/payments?format=csv', action: 'Download' },
+    {
+        key: 'members',
+        label: 'Registered members',
+        path: '/exports/members?format=csv',
+        filename: `members-${new Date().toISOString().slice(0, 10)}.csv`,
+    },
+    { key: 'events', label: 'Event Attendance', to: '/admin/event-registrations' },
+    {
+        key: 'payments',
+        label: 'Dues Collection Status',
+        path: '/exports/payments?format=csv',
+        filename: `payments-${new Date().toISOString().slice(0, 10)}.csv`,
+    },
 ];
+
+async function downloadQuickReport(report) {
+    exportError.value = '';
+    message.value = '';
+    exportingKey.value = report.key;
+
+    try {
+        await downloadAdminExport(getAdminClient(), report.path, report.filename);
+        message.value = `${report.label} CSV downloaded.`;
+    } catch (e) {
+        exportError.value = await messageFromBlobError(e, 'Unable to download this report.');
+    } finally {
+        exportingKey.value = '';
+    }
+}
 </script>
 
 <template>
     <div>
-        <p v-if="message" class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-            {{ message }}
-        </p>
+        <AdminAlert v-if="message" type="success" class="mb-4">{{ message }}</AdminAlert>
+        <AdminAlert v-if="exportError" type="error" class="mb-4">{{ exportError }}</AdminAlert>
 
         <div v-if="loading" class="rounded-2xl border border-dashed border-slate-200 bg-white px-8 py-16 text-center text-slate-500">
             Loading dashboard...
@@ -175,6 +203,13 @@ const quickReports = [
                         <div class="min-w-0">
                             <p class="text-xs font-medium text-slate-500 sm:text-sm">Total Active Members</p>
                             <p class="mt-2 text-3xl font-bold text-slate-900">{{ formatNumber(metrics?.active_members?.value ?? stats?.members?.active) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">
+                                {{ formatNumber(metrics?.active_members?.association_active ?? stats?.members?.association_active ?? 0) }}
+                                {{ metrics?.active_members?.association_label || stats?.members?.association_label || 'SICAMA' }}
+                                ·
+                                {{ formatNumber(metrics?.active_members?.platform_active ?? stats?.members?.platform_active ?? 0) }}
+                                platform
+                            </p>
                             <p class="mt-1 flex items-center gap-1 text-sm font-medium text-emerald-600">
                                 <ArrowTrendingUpIcon class="size-4" />
                                 {{ metrics?.active_members?.change_percent ?? 0 }}%
@@ -434,7 +469,7 @@ const quickReports = [
                             <h2 class="font-display text-base font-bold text-slate-900 sm:text-lg">Quick Reports & Downloads</h2>
                         </div>
                         <ul class="divide-y divide-slate-100">
-                            <li v-for="report in quickReports" :key="report.label" class="px-4 py-4 sm:px-5">
+                            <li v-for="report in quickReports" :key="report.key" class="px-4 py-4 sm:px-5">
                                 <div class="space-y-3">
                                     <div>
                                         <p class="font-medium text-slate-800">{{ report.label }}</p>
@@ -446,14 +481,16 @@ const quickReports = [
                                     >
                                         View Report
                                     </RouterLink>
-                                    <a
+                                    <button
                                         v-else
-                                        :href="report.href"
-                                        class="btn-institutional inline-flex w-full items-center justify-center !rounded-lg !px-3 !py-2.5 text-xs sm:w-auto"
+                                        type="button"
+                                        class="btn-institutional inline-flex w-full items-center justify-center gap-1.5 !rounded-lg !px-3 !py-2.5 text-xs sm:w-auto disabled:opacity-60"
+                                        :disabled="exportingKey === report.key"
+                                        @click="downloadQuickReport(report)"
                                     >
-                                        <ArrowDownTrayIcon class="mr-1.5 size-4" />
-                                        Download CSV
-                                    </a>
+                                        <ArrowDownTrayIcon class="size-4" />
+                                        {{ exportingKey === report.key ? 'Preparing…' : 'Download CSV' }}
+                                    </button>
                                 </div>
                             </li>
                         </ul>

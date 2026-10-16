@@ -141,21 +141,28 @@ function extractError(e) {
         subtitle="Complete our guided application with email verification. No password required until your account is created."
         :bullets="[
             'Verify your email with a one-time code',
-            'Upload supporting documents',
-            'Track your application after approval',
+            'Complete your professional details',
+            'Pay ₦25,000 to receive your SICAMA credentials',
         ]"
     >
         <template #aside>
             <div v-if="tiers.length" class="mt-10 space-y-3">
-                <p class="label-caps text-accent-gold/90">Membership tiers</p>
+                <p class="label-caps text-accent-gold/90">SICAMA membership</p>
                 <div
                     v-for="tier in tiers"
                     :key="tier.uuid"
                     class="rounded-xl border border-white/15 bg-white/8 px-4 py-3 backdrop-blur-sm"
                 >
                     <p class="font-semibold text-white">{{ tier.name }}</p>
-                    <p class="mt-0.5 text-sm text-slate-300">₦{{ formatDues(tier.annual_dues) }} / year</p>
+                    <p class="mt-1 text-lg font-bold text-white">₦{{ formatDues(tier.annual_dues) }}</p>
+                    <p class="mt-1 text-xs leading-relaxed text-slate-300">
+                        Includes registration ₦10,000 + annual dues ₦15,000.
+                        Paid once; ID card, certificate, and welcome letter follow payment.
+                    </p>
                 </div>
+                <p class="text-xs leading-relaxed text-slate-400">
+                    Journal manuscript submission does not require SICAMA membership — you can publish with a free account.
+                </p>
             </div>
         </template>
 
@@ -222,10 +229,15 @@ function extractError(e) {
 
             <form v-else-if="step === 2" class="mt-8 space-y-5" @submit.prevent="saveProfessionalDetails">
                 <div>
-                    <label class="label-caps">Membership tier</label>
+                    <label class="label-caps">Membership</label>
                     <select v-model="professional.membership_tier_id" required class="input-modern mt-2">
-                        <option v-for="tier in tiers" :key="tier.uuid" :value="tier.id">{{ tier.name }}</option>
+                        <option v-for="tier in tiers" :key="tier.uuid" :value="tier.id">
+                            {{ tier.name }} — ₦{{ formatDues(tier.annual_dues) }}
+                        </option>
                     </select>
+                    <p class="mt-1.5 text-xs text-slate-500">
+                        Flat fee ₦25,000 (registration ₦10,000 + annual dues ₦15,000). Supporting documents are optional for SICAMA.
+                    </p>
                 </div>
                 <div>
                     <label class="label-caps">Institution / organization</label>
@@ -266,7 +278,7 @@ function extractError(e) {
                 <CheckCircleIcon class="mx-auto size-12 text-green-600" />
                 <h3 class="mt-4 font-display text-xl font-bold text-institutional-dark">Application submitted</h3>
                 <p class="mt-2 text-sm text-text-secondary">
-                    Your application is under review. Check your email to set your password, then sign in to track progress.
+                    Your application is approved. Check your email to set your password, then sign in and pay the ₦25,000 SICAMA membership fee to receive your ID card, certificate, and welcome letter.
                 </p>
                 <RouterLink to="/member/login" class="btn-primary mt-6 inline-flex">Go to sign in</RouterLink>
             </div>

@@ -57,7 +57,7 @@ const canSubmitActiveApp = computed(() => {
         return false;
     }
 
-    const minRequired = activeApp.value.tier?.min_documents_required ?? 1;
+    const minRequired = activeApp.value.tier?.min_documents_required ?? 0;
 
     return (activeApp.value.documents?.length || 0) >= minRequired;
 });
@@ -395,15 +395,14 @@ async function submitApplication() {
                 <AdminPanel
                     v-if="showNewForm && !hasActiveMembership"
                     title="New application"
-                    description="Choose a membership tier and provide basic details to begin."
+                    description="Apply for SICAMA membership (₦25,000). Supporting documents are optional."
                 >
                     <div class="grid gap-4">
                         <div>
-                            <FormFieldLabel label="Membership tier" required help="Annual dues are shown for each tier." />
+                            <FormFieldLabel label="Membership" required help="Flat fee covers registration and annual dues." />
                             <select v-model="form.membership_tier_id" class="input !rounded-xl">
-                                <option value="">Select tier</option>
                                 <option v-for="tier in tiers" :key="tier.id" :value="tier.id">
-                                    {{ tier.name }} — ₦{{ Number(tier.annual_dues).toLocaleString() }}/year
+                                    {{ tier.name }} — ₦{{ Number(tier.annual_dues).toLocaleString() }}
                                 </option>
                             </select>
                         </div>
@@ -412,8 +411,8 @@ async function submitApplication() {
                             <p class="font-medium text-slate-800">{{ selectedTier.name }}</p>
                             <p v-if="selectedTier.description" class="mt-1">{{ selectedTier.description }}</p>
                             <p class="mt-2">
-                                Requires {{ selectedTier.min_documents_required || 1 }} document(s)
-                                · {{ selectedTier.requires_approval ? 'Admin review required' : 'Auto-approved on submit' }}
+                                Includes ₦10,000 registration + ₦15,000 annual dues.
+                                {{ selectedTier.requires_approval ? 'Admin review required.' : 'Auto-approved on submit — pay to receive your ID card, certificate, and welcome letter.' }}
                             </p>
                         </div>
 
@@ -440,12 +439,12 @@ async function submitApplication() {
                     v-else-if="activeApp"
                     :title="activeApp.status === 'draft' ? 'Complete application' : 'Application details'"
                     :description="activeApp.status === 'draft'
-                        ? 'Upload required documents and submit when you are ready.'
-                        : 'Review the current status and uploaded documents for this application.'"
+                        ? 'Documents are optional. Submit when you are ready, then pay the ₦25,000 membership fee.'
+                        : 'Review the current status and any uploaded documents for this application.'"
                 >
                     <dl class="grid gap-3 text-sm sm:grid-cols-2">
                         <div class="rounded-xl border border-slate-100 bg-surface-muted/40 p-4">
-                            <dt class="text-slate-500">Tier</dt>
+                            <dt class="text-slate-500">Membership</dt>
                             <dd class="mt-1 font-medium text-slate-900">{{ activeApp.tier?.name }}</dd>
                         </div>
                         <div class="rounded-xl border border-slate-100 bg-surface-muted/40 p-4">
@@ -463,7 +462,8 @@ async function submitApplication() {
                         <div class="rounded-xl border border-slate-100 bg-surface-muted/40 p-4">
                             <dt class="text-slate-500">Documents uploaded</dt>
                             <dd class="mt-1 font-medium text-slate-900">
-                                {{ activeApp.documents?.length || 0 }} / {{ activeApp.tier?.min_documents_required || 1 }} required
+                                {{ activeApp.documents?.length || 0 }}
+                                <span class="font-normal text-slate-500">(optional)</span>
                             </dd>
                         </div>
                     </dl>
@@ -548,7 +548,7 @@ async function submitApplication() {
                             </button>
                         </div>
                         <p v-if="!canSubmitActiveApp" class="mt-3 text-xs text-slate-500">
-                            Upload at least {{ activeApp.tier?.min_documents_required || 1 }} document(s) before submitting.
+                            Supporting documents are optional. Submit when you are ready, then complete the ₦25,000 payment.
                         </p>
                     </div>
                 </AdminPanel>
@@ -561,7 +561,7 @@ async function submitApplication() {
                     <dl class="grid gap-3 text-sm sm:grid-cols-2">
                         <div class="rounded-xl border border-slate-100 bg-surface-muted/40 p-4">
                             <dt class="text-slate-500">Tier</dt>
-                            <dd class="mt-1 font-medium text-slate-900">{{ memberUser?.member?.tier?.name || 'Full Member' }}</dd>
+                            <dd class="mt-1 font-medium text-slate-900">{{ memberUser?.member?.tier?.name || 'SICAMA Member' }}</dd>
                         </div>
                         <div class="rounded-xl border border-slate-100 bg-surface-muted/40 p-4">
                             <dt class="text-slate-500">Membership number</dt>

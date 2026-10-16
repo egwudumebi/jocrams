@@ -21,9 +21,25 @@ class ReportsService
     /** @return array<string, mixed> */
     public function overview(): array
     {
+        $membersActive = Member::query()->where('status', MemberStatus::Active)->count();
+        $membersAssociation = Member::query()
+            ->where('status', MemberStatus::Active)
+            ->where(function ($query): void {
+                $query->where('membership_number', 'like', 'SICAMA%')
+                    ->orWhere(function ($q): void {
+                        $q->where('metadata->organization', 'sicama')
+                            ->where('membership_number', 'not like', 'MEM-%');
+                    });
+            })
+            ->count();
+        $membersPlatform = max(0, $membersActive - $membersAssociation);
+
         return [
             'members_total' => Member::query()->count(),
-            'members_active' => Member::query()->where('status', MemberStatus::Active)->count(),
+            'members_active' => $membersActive,
+            'members_association_active' => $membersAssociation,
+            'members_platform_active' => $membersPlatform,
+            'members_association_label' => 'SICAMA',
             'applications_pending' => MembershipApplication::query()
                 ->whereIn('status', [ApplicationStatus::Submitted, ApplicationStatus::UnderReview])
                 ->count(),

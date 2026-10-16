@@ -50,6 +50,8 @@ class PaymentProofService
             ]);
         }
 
+        $this->assertMembershipProofAmount($purpose, $amount, $member);
+
         return DB::transaction(function () use ($user, $member, $purpose, $amount, $receipt, $payerReference, $memberNote, $related) {
             $media = $this->mediaUpload->store(
                 $receipt,
@@ -97,6 +99,7 @@ class PaymentProofService
 
         return DB::transaction(function () use ($proof, $admin) {
             $proof->loadMissing(['user', 'member.tier', 'related']);
+            $this->assertMembershipProofAmount($proof->purpose, (float) $proof->amount, $proof->member);
             $payable = $this->resolvePayableForApproval($proof);
 
             $payment = Payment::query()->create([
@@ -271,7 +274,7 @@ class PaymentProofService
         $member = $proof->member?->loadMissing('tier', 'user');
 
         return match ($proof->purpose) {
-            PaymentPurpose::Dues => $member ? Subscription::query()->create([
+            PaymentPurpose::Dues, PaymentPurpose::Registration => $member ? Subscription::query()->create([
                 'member_id' => $member->id,
                 'membership_tier_id' => $member->membership_tier_id,
                 'starts_at' => now(),
@@ -312,5 +315,34 @@ class PaymentProofService
         }
 
         return null;
+    }
+
+    /**
+     * Membership dues/registration proofs must match the configured flat fee
+     * (or the member's active tier annual_dues when set).
+     */
+    private function assertMembershipProofAmount(PaymentPurpose $purpose, float $amount, ?Member $member): void
+    {
+        if (! in_array($purpose, [PaymentPurpose::Dues, PaymentPurpose::Registration], true)) {
+            return;
+        }
+
+        $expected = (float) (
+            $member?->tier?->annual_dues
+            ?: config('jocrams.fees.membership_registration', 25000)
+        );
+
+        // Allow small float noise only; bank proofs should match the stated fee.
+        if (abs($amount - $expected) > 0.5) {
+            throw ValidationException::withMessages([
+                'amount' => [
+                    sprintf(
+                        'Membership payment proof must be ₦%s (you submitted ₦%s).',
+                        number_format($expected, 0),
+                        number_format($amount, 0)
+                    ),
+                ],
+            ]);
+        }
     }
 }

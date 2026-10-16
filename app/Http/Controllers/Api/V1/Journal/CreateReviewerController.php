@@ -3,13 +3,12 @@
 namespace App\Http\Controllers\Api\V1\Journal;
 
 use App\Http\Controllers\Controller;
-use App\Mail\JournalNotificationMail;
+use App\Mail\ReviewerInvitationMail;
 use App\Enums\UserStatus;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -43,13 +42,13 @@ class CreateReviewerController extends Controller
 
             $existing->assignRole($reviewerRole);
 
-            Mail::to($data['email'])->send(new JournalNotificationMail(
-                'You have been added as a Journal Reviewer',
-                "Hello {$existing->name},\n\nAn admin has granted you the journal reviewer role.\n\nLog in with your existing account using: {$data['email']}\n",
+            Mail::to($existing->email)->send(new ReviewerInvitationMail(
+                recipientName: $existing->name,
+                recipientEmail: $existing->email,
             ));
 
             return response()->json([
-                'message' => 'Reviewer role assigned to existing user.',
+                'message' => 'Reviewer role assigned to existing user. Invitation email sent.',
                 'reviewer_id' => (string) $existing->uuid,
             ]);
         }
@@ -66,13 +65,14 @@ class CreateReviewerController extends Controller
 
         $user->assignRole($reviewerRole);
 
-        Mail::to($data['email'])->send(new JournalNotificationMail(
-            'You have been added as a Journal Reviewer',
-            "Hello {$data['name']},\n\nAn admin has added you as a journal reviewer.\n\nLogin email: {$data['email']}\nTemporary password: {$tempPassword}\n\nPlease log in and change your password immediately.\n",
+        Mail::to($user->email)->send(new ReviewerInvitationMail(
+            recipientName: $user->name,
+            recipientEmail: $user->email,
+            temporaryPassword: $tempPassword,
         ));
 
         return response()->json([
-            'message' => 'Reviewer created',
+            'message' => 'Reviewer created. Invitation email sent.',
             'reviewer_id' => (string) $user->uuid,
             'temporary_password' => $tempPassword,
         ], 201);

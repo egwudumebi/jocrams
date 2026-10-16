@@ -67,6 +67,11 @@ const selectedBoardLabels = computed(() =>
         .map((member) => member.name),
 );
 
+const allExecutivesSelected = computed(() =>
+    boardMembers.value.length > 0
+    && boardMembers.value.every((member) => form.value.editorial_board_member_ids.includes(member.uuid)),
+);
+
 onMounted(async () => {
     await fetchAdminProfile();
     await Promise.all([loadCalls(), loadBoardMembers(), loadVolumeOptions(), loadFeeCatalog()]);
@@ -192,6 +197,22 @@ function toggleBoardMember(uuid) {
     form.value.editorial_board_member_ids = ids.includes(uuid)
         ? ids.filter((id) => id !== uuid)
         : [...ids, uuid];
+}
+
+function selectAllExecutives() {
+    form.value.editorial_board_member_ids = boardMembers.value.map((member) => member.uuid);
+}
+
+function clearExecutiveSelection() {
+    form.value.editorial_board_member_ids = [];
+}
+
+function toggleSelectAllExecutives() {
+    if (allExecutivesSelected.value) {
+        clearExecutiveSelection();
+    } else {
+        selectAllExecutives();
+    }
 }
 
 async function save() {
@@ -354,13 +375,45 @@ async function removeCall(call) {
                 </div>
 
                 <div>
-                    <label class="label">Editorial board</label>
+                    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <label class="label !mb-0">Editorial board</label>
+                        <div v-if="boardMembers.length" class="flex flex-wrap items-center gap-2">
+                            <button
+                                type="button"
+                                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:border-brand-300 hover:bg-brand-50 hover:text-brand-700"
+                                @click="toggleSelectAllExecutives"
+                            >
+                                {{ allExecutivesSelected ? 'Clear all executives' : 'Select all executives' }}
+                            </button>
+                        </div>
+                    </div>
                     <p v-if="!boardMembers.length" class="mb-2 text-sm text-slate-500">
                         No board members yet.
                         <RouterLink to="/admin/journal/editorial-board" class="font-medium text-brand-600 hover:underline">Add members</RouterLink>
                         first.
                     </p>
                     <div v-else class="grid gap-2 sm:grid-cols-2">
+                        <label
+                            class="flex cursor-pointer items-start gap-3 rounded-xl border border-brand-200 bg-brand-50/50 px-3 py-2.5 transition hover:border-brand-300 sm:col-span-2"
+                        >
+                            <input
+                                type="checkbox"
+                                class="mt-1 rounded border-slate-300 text-brand-600"
+                                :checked="allExecutivesSelected"
+                                :ref="(el) => {
+                                    if (el) {
+                                        el.indeterminate = selectedBoardLabels.length > 0 && !allExecutivesSelected;
+                                    }
+                                }"
+                                @change="toggleSelectAllExecutives"
+                            />
+                            <span>
+                                <span class="block font-medium text-slate-900">Select all executives</span>
+                                <span class="block text-xs text-slate-500">
+                                    {{ boardMembers.length }} editorial board member{{ boardMembers.length === 1 ? '' : 's' }}
+                                </span>
+                            </span>
+                        </label>
                         <label
                             v-for="member in boardMembers"
                             :key="member.uuid"
@@ -379,7 +432,7 @@ async function removeCall(call) {
                         </label>
                     </div>
                     <p v-if="selectedBoardLabels.length" class="mt-2 text-xs text-slate-500">
-                        Selected: {{ selectedBoardLabels.join(', ') }}
+                        Selected ({{ selectedBoardLabels.length }}): {{ selectedBoardLabels.join(', ') }}
                     </p>
                 </div>
 

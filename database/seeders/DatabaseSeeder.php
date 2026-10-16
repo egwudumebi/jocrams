@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             SicamaSeeder::class,
             JocramsEditorialBoardSeeder::class,
             FeeCatalogSeeder::class,
+            CrossrefSampleArticlesSeeder::class,
         ]);
     }
 }

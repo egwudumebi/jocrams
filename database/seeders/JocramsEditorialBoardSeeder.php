@@ -83,7 +83,7 @@ class JocramsEditorialBoardSeeder extends Seeder
                 'sort_order' => 40,
             ],
             [
-                'name' => 'Prof. Innocent Pascal Ihechu',
+                'name' => 'Prof. Innocent Paschal Ihechu',
                 'role_title' => 'Associate Editor',
                 'affiliation' => 'Abia State University, Abia State, Nigeria',
                 'sort_order' => 41,
@@ -177,6 +177,12 @@ class JocramsEditorialBoardSeeder extends Seeder
                 'is_active' => true,
             ],
         );
+
+        // Correct legacy name spelling: Pascal → Paschal.
+        EditorialBoardMember::query()
+            ->where('name', 'Prof. Innocent Pascal Ihechu')
+            ->orWhere('name', 'like', '%Innocent Pascal Ihechu%')
+            ->update(['name' => 'Prof. Innocent Paschal Ihechu']);
 
         EditorialBoardMember::query()
             ->where('name', 'Dr. Obioma Ozioko')

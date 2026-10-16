@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import {
     ArrowDownTrayIcon,
@@ -32,9 +32,26 @@ const events = ref([]);
 const downloads = ref([]);
 const editorialBoard = ref([]);
 const featuredBoard = ref([]);
+const activeMemberCount = ref(null);
 const loadingNews = ref(true);
 const loadingEvents = ref(true);
 const loadingDownloads = ref(true);
+
+const formattedMemberCount = computed(() => {
+    if (activeMemberCount.value == null || activeMemberCount.value < 1) {
+        return null;
+    }
+
+    return activeMemberCount.value.toLocaleString('en-US');
+});
+
+const membershipCtaCopy = computed(() => {
+    if (formattedMemberCount.value) {
+        return `Join ${formattedMemberCount.value} active members — including SICAMA professionals — with access to digital credentials, exclusive resources, and event privileges.`;
+    }
+
+    return 'Join our growing community of SICAMA professionals with access to digital credentials, exclusive resources, and event privileges.';
+});
 
 const benefits = [
     { icon: IdentificationIcon, title: 'Digital Membership ID', description: 'Instant digital card with QR verification.' },
@@ -76,12 +93,14 @@ onMounted(async () => {
         await Promise.all([loadBranding(), loadOrgInfo()]);
         heroSlides.value = resolveHeroSlides({ branding: branding.value });
 
-        const [newsRes, eventsRes, downloadsRes, callsRes, boardRes] = await Promise.all([
+        const [newsRes, eventsRes, downloadsRes, callsRes, boardRes, membersRes] = await Promise.all([
             api.get('/news', { params: { per_page: 3 } }),
             api.get('/events'),
             api.get('/downloads'),
             api.get('/journal/calls/open').catch(() => ({ data: { data: [] } })),
             journalClient.get('/editorial-board').catch(() => ({ data: { data: [] } })),
+            // Public directory total includes SICAMA + MEM- actives (non-expired).
+            api.get('/members', { params: { per_page: 1 } }).catch(() => ({ data: { meta: { total: 0 } } })),
         ]);
 
         news.value = newsRes.data.data.slice(0, 3);
@@ -89,6 +108,7 @@ onMounted(async () => {
         downloads.value = downloadsRes.data.data.slice(0, 4);
         editorialBoard.value = boardRes.data.data || [];
         featuredBoard.value = editorialBoard.value.slice(0, 6);
+        activeMemberCount.value = Number(membersRes.data?.meta?.total) || 0;
 
         heroSlides.value = resolveHeroSlides({
             calls: callsRes.data.data || [],
@@ -455,8 +475,15 @@ onMounted(async () => {
                     <div class="mx-auto max-w-2xl text-center">
                         <p class="label-caps text-accent-gold/90">Membership</p>
                         <h2 class="mt-3 font-display text-3xl font-bold text-white sm:text-4xl">Unlock Exclusive Member Benefits</h2>
+                        <p
+                            v-if="formattedMemberCount"
+                            class="mt-4 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-1.5 text-sm font-medium text-white"
+                        >
+                            <UsersIcon class="size-4 text-accent-gold" aria-hidden="true" />
+                            {{ formattedMemberCount }} active members
+                        </p>
                         <p class="mt-4 text-base leading-relaxed text-slate-300">
-                            Join thousands of professionals with access to digital credentials, exclusive resources, and event privileges.
+                            {{ membershipCtaCopy }}
                         </p>
                     </div>
                 </ScrollReveal>

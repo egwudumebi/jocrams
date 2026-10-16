@@ -84,7 +84,8 @@ export function useAuth() {
     }
 
     function canJournalSubmit() {
-        return !!memberUser.value?.member?.status && memberUser.value.member.status === 'active';
+        // Any signed-in portal user (or journal admin) may submit manuscripts.
+        return isMemberAuthenticated.value || canJournalAssign();
     }
 
     function canJournalReview() {

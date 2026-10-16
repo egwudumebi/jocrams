@@ -20,11 +20,11 @@ class ExportService
     {
         $rows = $this->memberQuery->filter($filters)->get()->map(fn (Member $member) => [
             'membership_number' => $member->membership_number,
-            'name' => $member->user->name,
-            'email' => $member->user->email,
-            'phone' => $member->user->phone,
-            'tier' => $member->tier->name,
-            'status' => $member->status->value,
+            'name' => $member->user?->name ?? '',
+            'email' => $member->user?->email ?? '',
+            'phone' => $member->user?->phone ?? '',
+            'tier' => $member->tier?->name ?? '',
+            'status' => $member->status?->value ?? (string) $member->status,
             'joined_at' => $member->joined_at?->toDateString(),
             'expires_at' => $member->expires_at?->toDateString(),
         ]);
@@ -63,9 +63,9 @@ class ExportService
             'user' => $payment->user?->email,
             'amount' => $payment->amount,
             'currency' => $payment->currency,
-            'status' => $payment->status->value,
-            'purpose' => $payment->purpose->value,
-            'gateway' => $payment->gateway->value,
+            'status' => $payment->status?->value ?? (string) $payment->status,
+            'purpose' => $payment->purpose?->value ?? (string) $payment->purpose,
+            'gateway' => $payment->gateway?->value ?? (string) $payment->gateway,
             'paid_at' => $payment->paid_at?->toDateTimeString(),
         ]);
 
@@ -90,8 +90,8 @@ class ExportService
             'uuid' => $app->uuid,
             'applicant_name' => $app->applicant_name,
             'applicant_email' => $app->applicant_email,
-            'tier' => $app->tier->name,
-            'status' => $app->status->value,
+            'tier' => $app->tier?->name ?? '',
+            'status' => $app->status?->value ?? (string) $app->status,
             'submitted_at' => $app->submitted_at?->toDateTimeString(),
         ]);
 

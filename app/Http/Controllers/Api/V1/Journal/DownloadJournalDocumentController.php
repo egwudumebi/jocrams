@@ -7,6 +7,7 @@ use App\Services\Journal\JournalDocumentAccessResolver;
 use App\Services\Journal\JournalSubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class DownloadJournalDocumentController extends Controller
@@ -17,7 +18,10 @@ class DownloadJournalDocumentController extends Controller
         JournalSubmissionService $service,
         JournalDocumentAccessResolver $accessResolver,
     ): JsonResponse|\Symfony\Component\HttpFoundation\Response {
-        $access = $accessResolver->contextFromUser($request->user());
+        // Route is public for approved manuscripts, but Bearer tokens are not
+        // hydrated unless we resolve the Sanctum guard explicitly.
+        $user = $request->user() ?? Auth::guard('sanctum')->user();
+        $access = $accessResolver->contextFromUser($user);
         $variant = $request->query('variant', 'manuscript');
 
         $result = $service->downloadDocument(

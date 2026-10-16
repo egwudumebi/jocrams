@@ -37,6 +37,14 @@ class PublicMemberPresenter
         $member->loadMissing(['user.profile', 'tier']);
         $profile = UserProfilePresenter::forUser($member->user);
 
+        $organization = strtolower((string) data_get($member->metadata, 'organization', ''));
+        if ($organization === '' && str_starts_with(strtoupper((string) $member->membership_number), 'SICAMA')) {
+            $organization = 'sicama';
+        }
+        if ($organization === '') {
+            $organization = 'jocrams';
+        }
+
         return [
             ...self::listItem($member),
             'professional_bio' => $profile['professional_bio'],
@@ -45,6 +53,10 @@ class PublicMemberPresenter
             'country' => $profile['address']['country'] ?? null,
             'social_links' => $profile['social_links'],
             'achievements' => $profile['achievements'],
+            'expires_at' => $member->expires_at,
+            'organization' => $organization,
+            'card_role' => $member->cardRoleTitle(),
+            'has_id_card' => true,
         ];
     }
 }

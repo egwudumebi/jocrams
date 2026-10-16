@@ -11,6 +11,23 @@ function filenameFromDisposition(disposition) {
     return match[1].replace(/['"]/g, '');
 }
 
+export async function messageFromBlobError(error, fallback = 'Download failed.') {
+    if (error?.userMessage) {
+        return error.userMessage;
+    }
+
+    if (error?.response?.data instanceof Blob) {
+        try {
+            const payload = JSON.parse(await error.response.data.text());
+            return payload.message || fallback;
+        } catch {
+            // Fall through.
+        }
+    }
+
+    return error?.response?.data?.message || error?.message || fallback;
+}
+
 export async function downloadBlobResponse(response, fallbackFilename = 'download.csv') {
     const contentType = response.headers['content-type'] || '';
 
@@ -25,6 +42,19 @@ export async function downloadBlobResponse(response, fallbackFilename = 'downloa
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
+    document.body.appendChild(link);
     link.click();
+    link.remove();
     URL.revokeObjectURL(url);
+}
+
+/**
+ * Authenticated CSV/XLSX download that never navigates away from the SPA.
+ * @param {import('axios').AxiosInstance} client
+ * @param {string} path admin-relative path e.g. /exports/members?format=csv
+ * @param {string} fallbackFilename
+ */
+export async function downloadAdminExport(client, path, fallbackFilename = 'export.csv') {
+    const response = await client.get(path, { responseType: 'blob' });
+    await downloadBlobResponse(response, fallbackFilename);
 }

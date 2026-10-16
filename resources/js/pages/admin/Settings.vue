@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Cog6ToothIcon } from '@heroicons/vue/24/outline';
+import { Cog6ToothIcon, NewspaperIcon } from '@heroicons/vue/24/outline';
 import AdminAlert from '../../components/admin/AdminAlert.vue';
 import AdminImageUpload from '../../components/admin/AdminImageUpload.vue';
 import AdminPageIntro from '../../components/admin/AdminPageIntro.vue';
@@ -44,9 +44,9 @@ const fieldLabels = {
     event_registration_alerts: 'Event registration alerts',
     system_updates: 'System update alerts',
     auto_approval: 'Auto-approve applications',
-    fee_student_ngn: 'Student fee (NGN)',
-    fee_professional_ngn: 'Professional fee (NGN)',
-    fee_institutional_ngn: 'Institutional fee (NGN)',
+    fee_student_ngn: 'SICAMA membership fee (NGN)',
+    fee_professional_ngn: 'Membership fee reference (NGN)',
+    fee_institutional_ngn: 'Institutional / special fee (NGN)',
     duration_months: 'Membership duration (months)',
     renewal_reminder_days: 'Renewal reminder (days)',
     currency: 'Currency',
@@ -108,13 +108,38 @@ const roleForm = ref({ name: '', email: '', role_slug: 'super-admin' });
 const roleMessage = ref('');
 const roleError = ref('');
 
+const newsArticles = ref([]);
+const newsLoading = ref(false);
+const bannerLinkMode = ref('none'); // none | news | custom
+const selectedNewsUuid = ref('');
+
+const newsPathPattern = /^\/news\/([0-9a-f-]{36})$/i;
+
+const selectedNewsArticle = computed(() => (
+    newsArticles.value.find((article) => article.uuid === selectedNewsUuid.value) || null
+));
+
+const bannerLinkPreview = computed(() => {
+    const link = String(values.value.site_banner_link || '').trim();
+    if (!link) {
+        return 'No “Read more” link — banner text only.';
+    }
+    if (selectedNewsArticle.value) {
+        return `Opens news article: ${selectedNewsArticle.value.title}`;
+    }
+    return `Opens: ${link}`;
+});
+
 onMounted(async () => {
-    await Promise.all([loadGroup('general'), loadTemplates()]);
+    await Promise.all([loadGroup('general'), loadTemplates(), loadNewsArticles()]);
 });
 
 watch(activeTab, async (tab) => {
     if (tab !== 'users') {
         await loadGroup(tab);
+    }
+    if (tab === 'general') {
+        await loadNewsArticles();
     }
 });
 
@@ -124,6 +149,76 @@ async function loadTemplates() {
         templates.value = data.data || [];
     } catch {
         templates.value = [];
+    }
+}
+
+async function loadNewsArticles() {
+    newsLoading.value = true;
+    try {
+        const { data } = await getAdminClient().get('/news-articles', {
+            params: { status: 'published', per_page: 100 },
+        });
+        newsArticles.value = data.data || [];
+        syncBannerLinkUi();
+    } catch {
+        newsArticles.value = [];
+    } finally {
+        newsLoading.value = false;
+    }
+}
+
+function syncBannerLinkUi() {
+    const link = String(values.value.site_banner_link || '').trim();
+    if (!link) {
+        bannerLinkMode.value = 'none';
+        selectedNewsUuid.value = '';
+        return;
+    }
+
+    const match = link.match(newsPathPattern);
+    if (match) {
+        bannerLinkMode.value = 'news';
+        selectedNewsUuid.value = match[1];
+        return;
+    }
+
+    bannerLinkMode.value = 'custom';
+    selectedNewsUuid.value = '';
+}
+
+function onBannerLinkModeChange() {
+    if (bannerLinkMode.value === 'none') {
+        values.value.site_banner_link = '';
+        selectedNewsUuid.value = '';
+        return;
+    }
+
+    if (bannerLinkMode.value === 'news') {
+        if (selectedNewsUuid.value) {
+            applySelectedNews(selectedNewsUuid.value);
+            return;
+        }
+        const first = newsArticles.value[0];
+        if (first) {
+            applySelectedNews(first.uuid);
+        } else {
+            values.value.site_banner_link = '';
+        }
+        return;
+    }
+
+    // custom — keep current value if it isn't a news path, otherwise clear for typing
+    if (newsPathPattern.test(String(values.value.site_banner_link || ''))) {
+        values.value.site_banner_link = '';
+    }
+    selectedNewsUuid.value = '';
+}
+
+function applySelectedNews(uuid) {
+    selectedNewsUuid.value = uuid;
+    values.value.site_banner_link = uuid ? `/news/${uuid}` : '';
+    if (!String(values.value.site_banner_link_label || '').trim()) {
+        values.value.site_banner_link_label = 'Read full announcement';
     }
 }
 
@@ -141,6 +236,7 @@ async function loadGroup(group) {
         values.value = next;
         if (group === 'general') {
             siteLogoUrl.value = logoUrlFromPath(next.site_logo_path);
+            syncBannerLinkUi();
         }
     } catch (err) {
         error.value = err.response?.data?.message || 'Unable to load settings.';
@@ -307,41 +403,122 @@ async function removeSiteLogo() {
             <form v-else class="space-y-6" @submit.prevent="saveGroup">
                 <div v-if="activeTab === 'general'" class="admin-form-grid">
                     <div class="sm:col-span-2 rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
-                        <h3 class="text-sm font-semibold text-slate-900">Site-wide notification banner</h3>
+                        <h3 class="text-sm font-semibold text-slate-900">Breaking news banner</h3>
                         <p class="mt-1 text-sm text-slate-500">
-                            Appears at the very top of every public, member, and admin screen when enabled.
+                            Scrolls across the top of every public, member, and admin screen when enabled.
+                            Use a short punchy line here; put the full story in News &amp; Blog and link to it.
                         </p>
                         <label class="mt-4 flex items-center gap-2 text-sm text-slate-700">
                             <input v-model="values.site_banner_enabled" type="checkbox" class="rounded border-slate-300" />
-                            Show banner
+                            Show breaking news at top of site
                         </label>
                         <div class="mt-4 space-y-4">
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-slate-700">Banner message</label>
+                                <label class="mb-1 block text-sm font-medium text-slate-700">Scrolling message</label>
                                 <textarea
                                     v-model="values.site_banner_message"
                                     rows="3"
                                     class="input !rounded-xl"
-                                    placeholder="Annual conference registration is now open."
+                                    placeholder="SICAMA secures Crossref DOI prefix 10.68641 for JOCRAMS · Next goal: Google Scholar indexing"
                                 />
+                                <p class="mt-1 text-xs text-slate-500">This text loops left-to-right in the top bar.</p>
                             </div>
-                            <div class="grid gap-4 sm:grid-cols-2">
-                                <div>
-                                    <label class="mb-1 block text-sm font-medium text-slate-700">Link (optional)</label>
-                                    <input v-model="values.site_banner_link" class="input !rounded-xl" placeholder="/events or https://..." />
+                            <div class="rounded-xl border border-slate-200 bg-white p-4">
+                                <div class="flex flex-wrap items-start justify-between gap-2">
+                                    <div>
+                                        <label class="mb-1 block text-sm font-medium text-slate-700">“Read more” destination</label>
+                                        <p class="text-xs text-slate-500">Pick a published news article — no need to paste URLs.</p>
+                                    </div>
+                                    <RouterLink
+                                        to="/admin/news"
+                                        class="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
+                                    >
+                                        <NewspaperIcon class="size-3.5" />
+                                        Manage news
+                                    </RouterLink>
                                 </div>
-                                <div>
-                                    <label class="mb-1 block text-sm font-medium text-slate-700">Link label</label>
-                                    <input v-model="values.site_banner_link_label" class="input !rounded-xl" placeholder="Learn more" />
+
+                                <div class="mt-3 grid gap-2 sm:grid-cols-3">
+                                    <label
+                                        v-for="option in [
+                                            { id: 'none', label: 'No link' },
+                                            { id: 'news', label: 'News article' },
+                                            { id: 'custom', label: 'Custom URL' },
+                                        ]"
+                                        :key="option.id"
+                                        class="flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition"
+                                        :class="bannerLinkMode === option.id
+                                            ? 'border-brand-400 bg-brand-50 text-brand-900'
+                                            : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-white'"
+                                    >
+                                        <input
+                                            v-model="bannerLinkMode"
+                                            type="radio"
+                                            class="text-brand-600"
+                                            :value="option.id"
+                                            @change="onBannerLinkModeChange"
+                                        />
+                                        {{ option.label }}
+                                    </label>
                                 </div>
+
+                                <div v-if="bannerLinkMode === 'news'" class="mt-4 space-y-2">
+                                    <label class="mb-1 block text-sm font-medium text-slate-700">Published article</label>
+                                    <p v-if="newsLoading" class="text-xs text-slate-500">Loading articles…</p>
+                                    <template v-else-if="newsArticles.length">
+                                        <select
+                                            class="input !rounded-xl"
+                                            :value="selectedNewsUuid"
+                                            @change="applySelectedNews($event.target.value)"
+                                        >
+                                            <option value="">Choose an article…</option>
+                                            <option
+                                                v-for="article in newsArticles"
+                                                :key="article.uuid"
+                                                :value="article.uuid"
+                                            >
+                                                {{ article.title }}
+                                            </option>
+                                        </select>
+                                    </template>
+                                    <div
+                                        v-else
+                                        class="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900 ring-1 ring-amber-200/70"
+                                    >
+                                        No published news articles yet.
+                                        <RouterLink to="/admin/news" class="font-semibold underline">Publish one in News &amp; Blog</RouterLink>
+                                        first, then come back here.
+                                    </div>
+                                </div>
+
+                                <div v-else-if="bannerLinkMode === 'custom'" class="mt-4">
+                                    <label class="mb-1 block text-sm font-medium text-slate-700">Custom link</label>
+                                    <input
+                                        v-model="values.site_banner_link"
+                                        class="input !rounded-xl"
+                                        placeholder="/journal, /events, or https://…"
+                                    />
+                                    <p class="mt-1 text-xs text-slate-500">Use a site path (starts with /) or a full https:// URL.</p>
+                                </div>
+
+                                <div v-if="bannerLinkMode !== 'none'" class="mt-4">
+                                    <label class="mb-1 block text-sm font-medium text-slate-700">Button text on the banner</label>
+                                    <input
+                                        v-model="values.site_banner_link_label"
+                                        class="input !rounded-xl"
+                                        placeholder="Read full announcement"
+                                    />
+                                </div>
+
+                                <p class="mt-3 text-xs leading-relaxed text-slate-500">{{ bannerLinkPreview }}</p>
                             </div>
                             <div>
-                                <label class="mb-1 block text-sm font-medium text-slate-700">Style</label>
+                                <label class="mb-1 block text-sm font-medium text-slate-700">Banner style</label>
                                 <select v-model="values.site_banner_style" class="input !rounded-xl">
+                                    <option value="announcement">Breaking (dark)</option>
                                     <option value="info">Info (brand blue)</option>
                                     <option value="warning">Warning (amber)</option>
                                     <option value="success">Success (green)</option>
-                                    <option value="announcement">Announcement (dark)</option>
                                 </select>
                             </div>
                         </div>

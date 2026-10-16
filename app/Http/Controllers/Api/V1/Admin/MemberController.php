@@ -19,11 +19,13 @@ class MemberController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $perPage = max(1, min(100, (int) $request->integer('per_page', 20)));
+
         $members = $this->memberQuery->paginate($request->only([
             'status', 'membership_tier_id', 'search',
             'expires_before', 'expires_after', 'expiring_within_days',
             'joined_from', 'joined_to',
-        ]));
+        ]), $perPage);
 
         return response()->json($members);
     }

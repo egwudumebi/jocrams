@@ -46,8 +46,8 @@ class SettingsSeeder extends Seeder
             ['group_name' => 'notifications', 'setting_key' => 'system_updates', 'setting_value' => '0', 'is_secret' => false],
 
             ['group_name' => 'membership', 'setting_key' => 'auto_approval', 'setting_value' => '0', 'is_secret' => false],
-            ['group_name' => 'membership', 'setting_key' => 'fee_student_ngn', 'setting_value' => '20000', 'is_secret' => false],
-            ['group_name' => 'membership', 'setting_key' => 'fee_professional_ngn', 'setting_value' => '20000', 'is_secret' => false],
+            ['group_name' => 'membership', 'setting_key' => 'fee_student_ngn', 'setting_value' => '25000', 'is_secret' => false],
+            ['group_name' => 'membership', 'setting_key' => 'fee_professional_ngn', 'setting_value' => '25000', 'is_secret' => false],
             ['group_name' => 'membership', 'setting_key' => 'fee_institutional_ngn', 'setting_value' => '150000', 'is_secret' => false],
             ['group_name' => 'membership', 'setting_key' => 'duration_months', 'setting_value' => '12', 'is_secret' => false],
             ['group_name' => 'membership', 'setting_key' => 'renewal_reminder_days', 'setting_value' => '30', 'is_secret' => false],

@@ -226,7 +226,7 @@ onMounted(() => {
                                     <div class="rounded-2xl border border-amber-100 bg-amber-50/80 p-4">
                                         <p class="text-xs font-semibold uppercase tracking-wide text-amber-800">Membership registration</p>
                                         <p class="mt-1 font-display text-2xl font-bold text-institutional-dark">
-                                            ₦{{ Number(fees?.membership_registration || 20000).toLocaleString() }}
+                                            ₦{{ Number(fees?.membership_registration || 25000).toLocaleString() }}
                                         </p>
                                     </div>
                                     <div class="rounded-2xl border border-slate-100 bg-slate-50 p-4">

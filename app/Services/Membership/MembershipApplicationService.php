@@ -14,7 +14,6 @@ use App\Models\User;
 use App\Notifications\MembershipApprovedNotification;
 use App\Notifications\MembershipRejectedNotification;
 use App\Notifications\MembershipSubmittedNotification;
-use App\Services\Credentials\CredentialGenerationService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -24,7 +23,6 @@ class MembershipApplicationService
 {
     public function __construct(
         private readonly MediaUploadService $mediaUploadService,
-        private readonly CredentialGenerationService $credentialService,
     ) {}
 
     public function createApplication(User $user, MembershipTier $tier, array $formData): MembershipApplication
@@ -244,26 +242,42 @@ class MembershipApplicationService
     private function activateFromApplication(MembershipApplication $application, ?User $approver): Member
     {
         $user = $application->user ?? User::query()->where('email', $application->applicant_email)->firstOrFail();
+        $application->loadMissing('tier');
 
+        $tierSlug = strtolower((string) ($application->tier?->slug ?? ''));
+        $isSicama = $tierSlug === 'sicama'
+            || strtolower((string) data_get($application->form_data, 'organization', '')) === 'sicama';
+
+        $existing = Member::query()->where('user_id', $user->id)->first();
+        $membershipNumber = $existing?->membership_number;
+        if (! is_string($membershipNumber) || $membershipNumber === '') {
+            $membershipNumber = $this->nextTemporaryNumber();
+        }
+
+        // Keep a temporary MEM- number until dues are paid. SICAMA/SEC
+        // sequential IDs + credential pack are assigned on payment success.
         $member = Member::query()->updateOrCreate(
             ['user_id' => $user->id],
             [
                 'membership_tier_id' => $application->membership_tier_id,
-                'membership_number' => $this->generateMembershipNumber(),
+                'membership_number' => $membershipNumber,
                 'status' => MemberStatus::Active,
-                'joined_at' => now(),
-                'expires_at' => now()->addYear(),
+                'joined_at' => $existing?->joined_at ?? now(),
+                'expires_at' => null,
                 'approved_at' => now(),
                 'approved_by' => $approver?->id,
+                'metadata' => array_merge($existing?->metadata ?? [], [
+                    'organization' => $isSicama ? 'sicama' : (data_get($existing?->metadata, 'organization') ?: 'sicama'),
+                    'card_role' => data_get($existing?->metadata, 'card_role') ?: 'Member',
+                    'awaiting_membership_payment' => true,
+                ]),
             ],
         );
-
-        $this->credentialService->issueMembershipCard($member);
 
         return $member->fresh(['tier', 'user', 'credentials']);
     }
 
-    private function generateMembershipNumber(): string
+    private function nextTemporaryNumber(): string
     {
         do {
             $number = 'MEM-'.strtoupper(Str::random(8));

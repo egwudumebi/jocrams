@@ -5,6 +5,11 @@ return [
     'motto' => 'Advancing Communication and Media Scholarship for the Good of Society',
     'email' => 'jocrams2026@gmail.com',
     'website' => 'https://jocrams.com',
+
+    'journal' => [
+        // When true, authors are emailed only after an editor acknowledges receipt.
+        'defer_receipt_acknowledgement' => true,
+    ],
     'address' => [
         'line1' => 'Room 1, Department of Mass Communication',
         'line2' => 'Faculty of Communication and Media Studies',
@@ -38,7 +43,10 @@ return [
     ],
 
     'fees' => [
-        'membership_registration' => 20000,
+        // Flat SICAMA membership: ₦10,000 registration + ₦15,000 annual dues (shown as detail in UI).
+        'membership_registration' => 25000,
+        'membership_registration_component' => 10000,
+        'membership_annual_dues_component' => 15000,
         'manuscript_review' => 10000,
         'peer_review_processing' => 5000,
         'turnitin_check' => 5000,

@@ -71,7 +71,7 @@ class PaymentProofTest extends TestCase
 
         $this->post('/api/v1/member/payment-proofs', [
             'purpose' => PaymentPurpose::Registration->value,
-            'amount' => 20000,
+            'amount' => 25000,
             'receipt' => UploadedFile::fake()->image('receipt.jpg'),
         ], [
             'Accept' => 'application/json',
@@ -105,7 +105,7 @@ class PaymentProofTest extends TestCase
 
         $this->post('/api/v1/member/payment-proofs', [
             'purpose' => PaymentPurpose::Dues->value,
-            'amount' => 15000,
+            'amount' => 25000,
             'receipt' => UploadedFile::fake()->create('receipt.pdf', 80, 'application/pdf'),
         ], [
             'Accept' => 'application/json',
@@ -136,7 +136,7 @@ class PaymentProofTest extends TestCase
 
         $this->post('/api/v1/member/payment-proofs', [
             'purpose' => PaymentPurpose::Dues->value,
-            'amount' => 10000,
+            'amount' => 25000,
             'receipt' => UploadedFile::fake()->image('proof.png'),
         ], [
             'Accept' => 'application/json',

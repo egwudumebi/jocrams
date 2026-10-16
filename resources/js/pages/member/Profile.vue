@@ -53,6 +53,15 @@ const uploadingImage = ref(false);
 const removingImage = ref(false);
 const imageInput = ref(null);
 
+const profileImageFailed = ref(false);
+const profileImageSrc = computed(() => {
+    const src = memberUser.value?.profile?.profile_image;
+    if (!src || profileImageFailed.value) {
+        return null;
+    }
+
+    return src;
+});
 const hasProfileImage = computed(() => Boolean(memberUser.value?.profile?.profile_image));
 
 const hasActiveMembership = computed(() => memberUser.value?.member?.status === 'active');
@@ -185,6 +194,7 @@ async function onImageSelected(event) {
         client.defaults.headers['Content-Type'] = 'multipart/form-data';
         const { data } = await client.post('/auth/profile/image', formData);
         profileMessage.value = data.message;
+        profileImageFailed.value = false;
         await fetchMemberProfile();
     } catch (e) {
         profileError.value = extractApiError(e, 'Unable to upload profile image.');
@@ -206,6 +216,7 @@ async function removeProfileImage() {
     try {
         const { data } = await getMemberClient().delete('/auth/profile/image');
         profileMessage.value = data.message;
+        profileImageFailed.value = false;
         await fetchMemberProfile();
     } catch (e) {
         profileError.value = extractApiError(e, 'Unable to remove profile image.');
@@ -246,10 +257,12 @@ async function changePassword() {
                         <div class="relative">
                             <div class="flex size-32 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-slate-100 text-4xl font-bold text-slate-400 shadow-md ring-2 ring-institutional/10">
                                 <img
-                                    v-if="memberUser.profile?.profile_image"
-                                    :src="memberUser.profile.profile_image"
-                                    alt="Profile photo"
+                                    v-if="profileImageSrc"
+                                    :src="profileImageSrc"
+                                    alt=""
                                     class="size-full object-cover"
+                                    @error="profileImageFailed = true"
+                                    @load="profileImageFailed = false"
                                 />
                                 <span v-else>{{ memberUser.name?.charAt(0) }}</span>
                             </div>

@@ -55,12 +55,12 @@ class MembershipWorkflowTest extends TestCase
             ->assertJsonPath('data.status', ApplicationStatus::Draft->value);
     }
 
-    public function test_application_submission_creates_approval_queue_entry(): void
+    public function test_sicama_application_submission_auto_approves_without_credentials(): void
     {
         Notification::fake();
 
         $user = User::factory()->create();
-        $tier = MembershipTier::query()->first();
+        $tier = MembershipTier::query()->where('slug', 'sicama')->firstOrFail();
         Sanctum::actingAs($user);
 
         $application = MembershipApplication::query()->create([
@@ -71,29 +71,27 @@ class MembershipWorkflowTest extends TestCase
             'applicant_name' => $user->name,
         ]);
 
-        $this->postJson("/api/v1/member/applications/{$application->uuid}/documents", [
-            'document' => UploadedFile::fake()->create('id.pdf', 100, 'application/pdf'),
-            'document_type' => 'national_id',
-        ])->assertCreated();
-
         $this->postJson("/api/v1/member/applications/{$application->uuid}/submit")
             ->assertOk()
-            ->assertJsonPath('data.status', ApplicationStatus::UnderReview->value);
+            ->assertJsonPath('data.status', ApplicationStatus::Approved->value);
 
-        $this->assertDatabaseHas('approvals', [
-            'approvable_type' => MembershipApplication::class,
-            'approvable_id' => $application->id,
-            'status' => 'pending',
+        $member = $user->fresh()->member;
+        $this->assertNotNull($member);
+        $this->assertTrue(str_starts_with((string) $member->membership_number, 'MEM-'));
+        $this->assertTrue((bool) data_get($member->metadata, 'awaiting_membership_payment'));
+        $this->assertDatabaseMissing('digital_credentials', [
+            'member_id' => $member->id,
+            'type' => 'membership_card',
         ]);
     }
 
-    public function test_admin_can_approve_application_and_activate_member(): void
+    public function test_admin_can_approve_application_and_activate_member_awaiting_payment(): void
     {
         Notification::fake();
 
         $admin = User::query()->where('email', 'admin@jocrams.test')->first();
         $user = User::factory()->create();
-        $tier = MembershipTier::query()->first();
+        $tier = MembershipTier::query()->where('slug', 'sicama')->firstOrFail();
 
         $application = MembershipApplication::query()->create([
             'user_id' => $user->id,
@@ -111,13 +109,13 @@ class MembershipWorkflowTest extends TestCase
         ])->assertOk()
             ->assertJsonStructure(['data' => ['membership_number', 'status']]);
 
-        $this->assertDatabaseHas('members', [
-            'user_id' => $user->id,
-            'status' => MemberStatus::Active->value,
-        ]);
-
-        $this->assertDatabaseHas('digital_credentials', [
-            'member_id' => $user->fresh()->member->id,
+        $member = $user->fresh()->member;
+        $this->assertNotNull($member);
+        $this->assertSame(MemberStatus::Active, $member->status);
+        $this->assertTrue(str_starts_with((string) $member->membership_number, 'MEM-'));
+        $this->assertTrue((bool) data_get($member->metadata, 'awaiting_membership_payment'));
+        $this->assertDatabaseMissing('digital_credentials', [
+            'member_id' => $member->id,
             'type' => 'membership_card',
         ]);
     }

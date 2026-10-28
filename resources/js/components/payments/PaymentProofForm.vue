@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ArrowUpTrayIcon, DocumentArrowUpIcon } from '@heroicons/vue/24/outline';
 import { useAuth } from '../../composables/useAuth';
 import { extractApiError } from '../../utils/apiError';
@@ -36,13 +36,27 @@ const submitting = ref(false);
 const error = ref('');
 const message = ref('');
 const file = ref(null);
+const targets = ref({
+    journal_submissions: [],
+    event_registrations: [],
+});
+
+function cleanReference(value) {
+    const reference = String(value || '').trim();
+
+    if (!reference || reference === 'undefined' || reference === 'null') {
+        return '';
+    }
+
+    return reference;
+}
 
 const form = ref({
     purpose: props.purpose,
     amount: props.amount ? String(props.amount) : '',
     payer_reference: '',
     member_note: '',
-    related_uuid: props.relatedUuid || '',
+    related_uuid: cleanReference(props.relatedUuid),
 });
 
 watch(
@@ -52,13 +66,66 @@ watch(
         if (props.amount !== '' && props.amount !== null && props.amount !== undefined) {
             form.value.amount = String(props.amount);
         }
-        form.value.related_uuid = props.relatedUuid || '';
+        form.value.related_uuid = cleanReference(props.relatedUuid);
+        selectOnlyOption();
     },
 );
 
 const needsRelated = computed(() =>
     ['journal_submission_fee', 'journal_publication_fee', 'event_fee'].includes(form.value.purpose),
 );
+
+const relatedOptions = computed(() => {
+    if (form.value.purpose === 'event_fee') {
+        return targets.value.event_registrations;
+    }
+
+    if (needsRelated.value) {
+        return targets.value.journal_submissions;
+    }
+
+    return [];
+});
+
+const relatedLabel = computed(() => (
+    form.value.purpose === 'event_fee' ? 'Event registration' : 'Manuscript'
+));
+
+onMounted(loadTargets);
+
+watch(
+    () => form.value.purpose,
+    () => {
+        selectOnlyOption();
+    },
+);
+
+async function loadTargets() {
+    try {
+        const { data } = await getMemberClient().get('/payment-proofs/targets');
+        targets.value = {
+            journal_submissions: data.data?.journal_submissions || [],
+            event_registrations: data.data?.event_registrations || [],
+        };
+        selectOnlyOption();
+    } catch {
+        targets.value = { journal_submissions: [], event_registrations: [] };
+    }
+}
+
+function selectOnlyOption() {
+    if (!needsRelated.value) {
+        return;
+    }
+
+    if (form.value.related_uuid) {
+        return;
+    }
+
+    if (relatedOptions.value.length === 1) {
+        form.value.related_uuid = relatedOptions.value[0].uuid;
+    }
+}
 
 function onFileChange(event) {
     file.value = event.target.files?.[0] || null;
@@ -70,6 +137,13 @@ async function submit() {
 
     if (!file.value) {
         error.value = 'Please attach your bank transfer receipt (JPG, PNG, or PDF).';
+        return;
+    }
+
+    if (needsRelated.value && !cleanReference(form.value.related_uuid) && relatedOptions.value.length > 1) {
+        error.value = form.value.purpose === 'event_fee'
+            ? 'Choose the event registration this payment is for.'
+            : 'Choose the manuscript this payment is for.';
         return;
     }
 
@@ -89,8 +163,8 @@ async function submit() {
             fd.append('member_note', form.value.member_note);
         }
 
-        if (form.value.related_uuid) {
-            fd.append('related_uuid', form.value.related_uuid);
+        if (needsRelated.value && cleanReference(form.value.related_uuid)) {
+            fd.append('related_uuid', cleanReference(form.value.related_uuid));
         }
 
         const { data } = await getMemberClient().post('/payment-proofs', fd, {
@@ -153,10 +227,18 @@ async function submit() {
             </div>
 
             <div v-if="needsRelated">
-                <label class="label">
-                    {{ form.purpose === 'event_fee' ? 'Event registration UUID' : 'Journal submission UUID' }}
-                </label>
-                <input v-model="form.related_uuid" type="text" class="input" :required="needsRelated" placeholder="Paste UUID if not prefilled" />
+                <label class="label">{{ relatedLabel }}</label>
+                <select v-model="form.related_uuid" class="input" :required="relatedOptions.length > 1">
+                    <option value="">
+                        {{ relatedOptions.length ? `Select ${relatedLabel.toLowerCase()}` : 'We will match this to your account' }}
+                    </option>
+                    <option v-for="item in relatedOptions" :key="item.uuid" :value="item.uuid">
+                        {{ item.label }}
+                    </option>
+                </select>
+                <p v-if="!relatedOptions.length" class="mt-1 text-xs text-text-secondary">
+                    If this is your only {{ relatedLabel.toLowerCase() }}, you can submit the receipt without picking one.
+                </p>
             </div>
 
             <div>

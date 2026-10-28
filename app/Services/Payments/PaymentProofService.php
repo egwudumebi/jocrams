@@ -2,6 +2,7 @@
 
 namespace App\Services\Payments;
 
+use App\Enums\JournalSubmissionStatus;
 use App\Enums\PaymentGateway;
 use App\Enums\PaymentProofStatus;
 use App\Enums\PaymentPurpose;
@@ -230,35 +231,149 @@ class PaymentProofService
         ];
     }
 
+    /** @return array{journal_submissions: list<array<string, string>>, event_registrations: list<array<string, string>>} */
+    public function paymentTargets(User $user): array
+    {
+        $submissions = JournalSubmission::query()
+            ->where('author_id', $user->uuid)
+            ->latest()
+            ->get()
+            ->map(fn (JournalSubmission $submission) => [
+                'uuid' => (string) $submission->uuid,
+                'label' => (string) $submission->title,
+                'status' => $submission->status->value,
+            ])
+            ->values()
+            ->all();
+
+        $registrations = EventRegistration::query()
+            ->with('event:id,title')
+            ->where(function ($query) use ($user): void {
+                $query->where('user_id', $user->id)
+                    ->orWhere('registrant_email', $user->email);
+            })
+            ->latest()
+            ->limit(50)
+            ->get()
+            ->map(fn (EventRegistration $registration) => [
+                'uuid' => (string) $registration->uuid,
+                'label' => trim(($registration->event?->title ?: 'Event').' · '.($registration->registration_number ?: 'registration')),
+                'status' => (string) $registration->status,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'journal_submissions' => $submissions,
+            'event_registrations' => $registrations,
+        ];
+    }
+
     private function resolveRelated(User $user, PaymentPurpose $purpose, ?string $relatedUuid): ?object
     {
-        if (! $relatedUuid) {
-            return null;
-        }
+        $reference = $this->normalizeReference($relatedUuid);
 
         return match ($purpose) {
-            PaymentPurpose::JournalSubmissionFee, PaymentPurpose::JournalPublicationFee => tap(
-                JournalSubmission::query()->where('uuid', $relatedUuid)->first(),
-                function (?JournalSubmission $submission) use ($user): void {
-                    if (! $submission || $submission->author_id !== $user->uuid) {
-                        throw ValidationException::withMessages([
-                            'related_uuid' => ['Journal submission not found for this account.'],
-                        ]);
-                    }
-                },
-            ),
-            PaymentPurpose::EventFee => tap(
-                EventRegistration::query()->where('uuid', $relatedUuid)->first(),
-                function (?EventRegistration $registration) use ($user): void {
-                    if (! $registration || (int) $registration->user_id !== (int) $user->id) {
-                        throw ValidationException::withMessages([
-                            'related_uuid' => ['Event registration not found for this account.'],
-                        ]);
-                    }
-                },
-            ),
+            PaymentPurpose::JournalSubmissionFee, PaymentPurpose::JournalPublicationFee => $this->resolveJournalSubmission($user, $reference),
+            PaymentPurpose::EventFee => $this->resolveEventRegistration($user, $reference),
             default => null,
         };
+    }
+
+    private function resolveJournalSubmission(User $user, string $reference): JournalSubmission
+    {
+        $owned = JournalSubmission::query()->where('author_id', $user->uuid);
+
+        if ($reference !== '') {
+            $submission = (clone $owned)
+                ->where(function ($query) use ($reference): void {
+                    $query->where('uuid', $reference)->orWhere('slug', $reference);
+                })
+                ->first();
+
+            if (! $submission) {
+                throw ValidationException::withMessages([
+                    'related_uuid' => ['That manuscript was not found on your account. Choose it from the list.'],
+                ]);
+            }
+
+            return $submission;
+        }
+
+        $submissions = (clone $owned)->latest()->get();
+        $pending = $submissions->filter(
+            fn (JournalSubmission $submission) => $submission->status === JournalSubmissionStatus::PaymentPending,
+        );
+        $pool = $pending->isNotEmpty() ? $pending->values() : $submissions;
+
+        if ($pool->count() === 1) {
+            return $pool->first();
+        }
+
+        if ($pool->isEmpty()) {
+            throw ValidationException::withMessages([
+                'related_uuid' => ['No manuscript was found on your account for this payment.'],
+            ]);
+        }
+
+        throw ValidationException::withMessages([
+            'related_uuid' => ['Choose the manuscript this payment is for.'],
+        ]);
+    }
+
+    private function resolveEventRegistration(User $user, string $reference): EventRegistration
+    {
+        $owned = EventRegistration::query()->where(function ($query) use ($user): void {
+            $query->where('user_id', $user->id)
+                ->orWhere('registrant_email', $user->email);
+        });
+
+        if ($reference !== '') {
+            $registration = (clone $owned)
+                ->where(function ($query) use ($reference): void {
+                    $query->where('uuid', $reference)->orWhere('registration_number', $reference);
+                })
+                ->first();
+
+            if (! $registration) {
+                throw ValidationException::withMessages([
+                    'related_uuid' => ['That event registration was not found on your account. Choose it from the list.'],
+                ]);
+            }
+
+            return $registration;
+        }
+
+        $registrations = (clone $owned)->latest()->get();
+        $pending = $registrations->filter(
+            fn (EventRegistration $registration) => (string) $registration->status === 'pending',
+        );
+        $pool = $pending->isNotEmpty() ? $pending->values() : $registrations;
+
+        if ($pool->count() === 1) {
+            return $pool->first();
+        }
+
+        if ($pool->isEmpty()) {
+            throw ValidationException::withMessages([
+                'related_uuid' => ['No event registration was found on your account for this payment.'],
+            ]);
+        }
+
+        throw ValidationException::withMessages([
+            'related_uuid' => ['Choose the event registration this payment is for.'],
+        ]);
+    }
+
+    private function normalizeReference(?string $relatedUuid): string
+    {
+        $reference = trim((string) $relatedUuid);
+
+        if (in_array(strtolower($reference), ['', 'undefined', 'null'], true)) {
+            return '';
+        }
+
+        return $reference;
     }
 
     private function resolvePayableForApproval(PaymentProof $proof): ?object

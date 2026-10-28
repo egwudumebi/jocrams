@@ -24,8 +24,11 @@ const paymentHref = computed(() => {
 
     const params = new URLSearchParams({
         purpose: 'journal_submission_fee',
-        related: submission.value.id,
     });
+
+    if (submission.value.id) {
+        params.set('related', String(submission.value.id));
+    }
 
     if (submission.value.submission_fee_amount) {
         params.set('amount', String(submission.value.submission_fee_amount));

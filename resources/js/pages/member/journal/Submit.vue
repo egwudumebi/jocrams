@@ -202,8 +202,11 @@ function onDrop(event) {
 function paymentRedirectQuery(submissionId, fee) {
     const params = new URLSearchParams({
         purpose: 'journal_submission_fee',
-        related: submissionId,
     });
+
+    if (submissionId) {
+        params.set('related', String(submissionId));
+    }
 
     if (fee) {
         params.set('amount', String(fee));

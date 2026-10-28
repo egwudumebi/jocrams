@@ -27,6 +27,13 @@ class PaymentProofController extends Controller
         return response()->json(['data' => $items]);
     }
 
+    public function targets(Request $request): JsonResponse
+    {
+        return response()->json([
+            'data' => $this->proofs->paymentTargets($request->user()),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -34,7 +41,7 @@ class PaymentProofController extends Controller
             'amount' => ['required', 'numeric', 'min:0.01'],
             'payer_reference' => ['nullable', 'string', 'max:120'],
             'member_note' => ['nullable', 'string', 'max:1000'],
-            'related_uuid' => ['nullable', 'uuid'],
+            'related_uuid' => ['nullable', 'string', 'max:80'],
             'receipt' => ['required', 'file', 'mimes:jpg,jpeg,png,pdf,webp', 'max:5120'],
         ]);
 

@@ -61,7 +61,19 @@ const defaultPurpose = computed(() => {
     return hasActiveMembership.value ? 'dues' : 'registration';
 });
 
-const relatedUuid = computed(() => (typeof route.query.related === 'string' ? route.query.related : ''));
+const relatedUuid = computed(() => {
+    if (typeof route.query.related !== 'string') {
+        return '';
+    }
+
+    const value = route.query.related.trim();
+
+    if (!value || value === 'undefined' || value === 'null') {
+        return '';
+    }
+
+    return value;
+});
 
 const successfulPayments = computed(() => payments.value.filter((payment) => payment.status === 'successful'));
 const pendingProofs = computed(() => proofs.value.filter((proof) => proof.status === 'pending'));

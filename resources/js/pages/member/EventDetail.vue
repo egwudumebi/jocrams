@@ -44,6 +44,19 @@ const isPaid = computed(() => fee.value > 0);
 const registrationOpen = computed(() => event.value?.registration_stats?.registration_open ?? false);
 const isFull = computed(() => event.value?.registration_stats?.is_full ?? false);
 const showRegistrationForm = computed(() => !isRegistered.value && registrationOpen.value && !isFull.value);
+const paymentReceiptHref = computed(() => {
+    const params = new URLSearchParams({
+        purpose: 'event_fee',
+        amount: String(fee.value || ''),
+    });
+    const related = myRegistration.value?.uuid || myRegistration.value?.registration_number || '';
+
+    if (related) {
+        params.set('related', String(related));
+    }
+
+    return `/member/payments?${params.toString()}`;
+});
 
 onMounted(async () => {
     await Promise.all([loadEvent(), loadMyRegistration()]);
@@ -305,7 +318,7 @@ async function submitRegistration() {
                         </div>
                     </dl>
                     <RouterLink
-                        :to="`/member/payments?purpose=event_fee&related=${myRegistration.uuid}&amount=${fee}`"
+                        :to="paymentReceiptHref"
                         class="btn-institutional mt-4 inline-flex w-full justify-center !rounded-xl"
                     >
                         Submit payment receipt

@@ -192,6 +192,7 @@ Route::prefix('v1')->group(function (): void {
             Route::post('notifications/{notificationLog}/read', [MemberNotificationController::class, 'markRead']);
 
             Route::get('payment-proofs', [MemberPaymentProofController::class, 'index']);
+            Route::get('payment-proofs/targets', [MemberPaymentProofController::class, 'targets']);
             Route::post('payment-proofs', [MemberPaymentProofController::class, 'store'])
                 ->middleware('throttle:uploads');
             Route::get('payment-proofs/{paymentProof:uuid}/download', [MemberPaymentProofController::class, 'download']);
